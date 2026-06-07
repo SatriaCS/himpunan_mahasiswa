@@ -1,33 +1,86 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Modal from "../../components/Modal";
+import Pagination from "../components/Pagination";
 
 export default function MembersPage() {
+    const [loading, setLoading] = useState(false);
+
+    const [isSuccessOpen, setIsSuccessOpen] = useState(false);
+    const [isErrorOpen, setIsErrorOpen] = useState(false);
+
+    const [alertTitle, setAlertTitle] = useState("");
+    const [alertMessage, setAlertMessage] = useState("");
+
+    const showSuccess = (message) => {
+        setAlertTitle("Berhasil!");
+        setAlertMessage(message);
+        setIsSuccessOpen(true);
+    };
+
+    const showError = (message) => {
+        setAlertTitle("Gagal!");
+        setAlertMessage(message);
+        setIsErrorOpen(true);
+    };
+
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [modalMode, setModalMode] = useState("add"); // 'add', 'edit', 'delete', 'success'
-    const [formData, setFormData] = useState({ name: "", nim: "", role: "" });
+    const [modalMode, setModalMode] = useState("add"); // 'add', 'edit', 'delete'
+    const [formData, setFormData] = useState({ nama: "",  jabatan: "", foto:null });
     const [successData, setSuccessData] = useState(null);
     const [memberToDelete, setMemberToDelete] = useState(null);
     const [editingId, setEditingId] = useState(null);
+    const [imagePreview, setImagePreview] = useState(null);
 
-    const [membersList, setMembersList] = useState([
-        { id: 1, name: "Budi Santoso", nim: "210001", role: "Ketua", status: "Aktif", image: "https://placehold.co/100x100/3b82f6/ffffff?text=BS" },
-        { id: 2, name: "Siti Aminah", nim: "210002", role: "Sekretaris", status: "Aktif", image: "https://placehold.co/100x100/ec4899/ffffff?text=SA" },
-        { id: 3, name: "Rudi Hermawan", nim: "210003", role: "Anggota", status: "Tidak Aktif", image: "https://placehold.co/100x100/10b981/ffffff?text=RH" },
-        { id: 4, name: "Dewi Putri", nim: "210004", role: "Anggota", status: "Aktif", image: "https://placehold.co/100x100/f59e0b/ffffff?text=DP" },
-    ]);
+    const [membersList, setMembersList] = useState([]);
+    // pagination
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const limit = 5;
+    // loading
+    const [loadingData, setLoadingData] = useState(true);
+
+    const fetchMembers = async (currentPage = 1) => {
+        setLoadingData(true)
+
+        const res = await fetch(`/api/admin/member?page=${currentPage}&limit=${limit}`,
+            {
+                cache: "no-store"
+            }
+        );
+        const result = await res.json();
+        
+        setMembersList(result.data);
+        setTotalPages(result.totalPages);
+
+        // AUTO FIX PAGE
+        if (currentPage > result.totalPages && result.totalPages > 0) {
+            setCurrentPage(result.totalPages);
+        }
+
+        setLoadingData(false)
+    };
+
+    useEffect(() => {
+        fetchMembers(currentPage);
+    }, [currentPage]);
 
     const handleAdd = () => {
         setModalMode("add");
-        setEditingId(null);
-        setFormData({ name: "", nim: "", role: "", image: "" });
+        setFormData({ nama: "", jabatan: "", foto: null });
+        setImagePreview(null)
         setIsModalOpen(true);
     };
 
     const handleEdit = (member) => {
         setModalMode("edit");
         setEditingId(member.id);
-        setFormData({ name: member.name, nim: member.nim, role: member.role, image: member.image || "" });
+        setFormData({ nama: member.nama, jabatan: member.jabatan, foto: null });
+        if (member.foto) {
+            setImagePreview(
+                `/uploads/member/${member.username}/${member.foto}`
+            );
+        }        
         setIsModalOpen(true);
     };
 
@@ -37,32 +90,105 @@ export default function MembersPage() {
         setIsModalOpen(true);
     };
 
-    const confirmDelete = () => {
-        setMembersList(membersList.filter((m) => m.id !== memberToDelete.id));
-        setSuccessData({ mode: "delete" });
-        setModalMode("success");
+    const confirmDelete = async() => {
+        try {
+            setLoading(true)
+            const res = await fetch(
+                `/api/admin/member?id=${memberToDelete.id}`,
+                { method: "DELETE" }
+            );
+
+            const result = await res.json();
+
+            if (!res.ok) {
+                showError(result.message);
+                return;
+            }
+
+            setIsModalOpen(false);
+            showSuccess(result.message);
+            setLoading(false)
+        } catch (error) {
+            showError(error.message);            
+        }finally {
+            fetchMembers(currentPage);
+            setLoading(false);
+        }
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async(e) => {
         e.preventDefault();
 
-        if (modalMode === "add") {
-            const newId = membersList.length > 0 ? Math.max(...membersList.map((m) => m.id)) + 1 : 1;
-            const newMember = {
-                ...formData,
-                id: newId,
-                status: "Aktif",
-                image: formData.image || `https://placehold.co/100x100/3b82f6/ffffff?text=${formData.name.charAt(0)}${formData.name.split(' ')[1]?.charAt(0) || ''}`
-            };
-            setMembersList([...membersList, newMember]);
-        } else if (modalMode === "edit") {
-            setMembersList(
-                membersList.map((m) => (m.id === editingId ? { ...m, ...formData } : m))
-            );
-        }
+        try {
 
-        setSuccessData({ ...formData, mode: modalMode });
-        setModalMode("success");
+            setLoading(true);
+
+            const data = new FormData();
+            data.append("nama", formData.nama);
+            data.append("jabatan", formData.jabatan);
+            data.append("foto", formData.foto);
+
+            const res = await fetch("/api/admin/member", {
+                method: "POST",
+                body: data
+            });
+
+            const result = await res.json();
+
+            if (!res.ok) {
+                showError(result.message);
+                return;
+            }
+
+            showSuccess(result.message);
+            setFormData({ nama: "", jabatan: "", foto: null })
+            setImagePreview(null)
+            setIsModalOpen(false)
+
+        } catch (error) {
+            showError(error.message);
+        } finally {
+            fetchMembers(currentPage);
+            setLoading(false);
+        }
+    };
+
+    const handleSubmitEdit = async(e) => {
+        e.preventDefault();
+
+        try {
+
+            setLoading(true);
+
+            const data = new FormData();
+            data.append("id", editingId);
+            data.append("nama", formData.nama);
+            data.append("jabatan", formData.jabatan);
+            data.append("foto", formData.foto);
+
+            const res = await fetch("/api/admin/member", {
+                method: "PUT",
+                body: data
+            });
+
+            const result = await res.json();
+
+            if (!res.ok) {
+                showError(result.message);
+                return;
+            }
+
+            showSuccess(result.message);
+            setFormData({ nama: "", jabatan: "", foto: null })
+            setImagePreview(null)
+            setIsModalOpen(false)
+
+        } catch (error) {
+            showError(error.message);
+        } finally {
+            fetchMembers(currentPage);
+            setLoading(false);
+        }
     };
 
     return (
@@ -80,51 +206,86 @@ export default function MembersPage() {
                 </button>
             </div>
 
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                <table className="w-full text-left border-collapse">
-                    <thead>
-                        <tr className="bg-gray-50 border-b border-gray-100 text-xs uppercase text-gray-500 font-semibold tracking-wider">
-                            <th className="p-6">Nama Lengkap</th>
-                            <th className="p-6">NIM</th>
-                            <th className="p-6">Jabatan</th>
-                            <th className="p-6 text-right">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50">
-                        {membersList.map((member) => (
-                            <tr key={member.id} className="hover:bg-gray-50 transition-colors">
-                                <td className="p-6">
-                                    <div className="flex items-center gap-3">
-                                        <img
-                                            src={member.image || `https://placehold.co/100x100/3b82f6/ffffff?text=${member.name.charAt(0)}`}
-                                            alt={member.name}
-                                            className="h-10 w-10 rounded-full object-cover"
-                                        />
-                                        <div>
-                                            <p className="font-bold text-gray-900">{member.name}</p>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td className="p-6 text-gray-600 font-mono">{member.nim}</td>
-                                <td className="p-6 text-gray-600">{member.role}</td>
-                                <td className="p-6 text-right">
-                                    <button
-                                        onClick={() => handleEdit(member)}
-                                        className="text-blue-600 hover:text-blue-800 font-medium text-sm"
-                                    >
-                                        ✏️
-                                    </button>
-                                    <button
-                                        onClick={() => handleDelete(member)}
-                                        className="text-red-600 hover:text-red-800 font-medium text-sm ml-4"
-                                    >
-                                        🗑️
-                                    </button>
-                                </td>
+            <div className="bg-white rounded-2xl shadow-sm border pb-2 border-gray-100 overflow-hidden">
+                <div className="w-full overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="bg-gray-50 border-b border-gray-100 text-xs uppercase text-gray-500 font-semibold tracking-wider">
+                                <th className="p-6">No</th>
+                                <th className="p-6">Nama Lengkap</th>
+                                <th className="p-6">Jabatan</th>
+                                <th className="p-6 text-right">Aksi</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50">
+                            {loadingData ? (
+                                    <tr>
+                                        <td colSpan="4" className="text-center py-10">
+                                            <div className="flex justify-center items-center gap-2">
+                                                <div className="w-6 h-6 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                                                <span className="text-gray-500">Memuat data...</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ) : membersList.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="4" className="text-center py-10 text-gray-500">
+                                            Data belum tersedia
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    membersList.map((member, index) => (
+                                        <tr key={member.id} className="hover:bg-gray-50 transition-colors">
+                                            <td className="p-6 font-semibold text-gray-500">
+                                                {(currentPage - 1) * limit + index + 1}
+                                            </td>
+                                            <td className="p-6">
+                                                <div className="flex items-center gap-3">
+                                                    {member.foto ? (
+                                                        <img
+                                                            src={`/uploads/member/${member.username}/${member.foto}`}
+                                                            alt={member.nama}
+                                                            className="h-10 w-10 rounded-full object-cover"
+                                                        />
+                                                    ) : (
+                                                        <span className="text-gray-400 text-2xl">👤</span>
+                                                    )}
+                                                    <div>
+                                                        <p className="font-bold text-gray-900">{member.nama}</p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="p-6 text-gray-600">{member.jabatan}</td>
+                                            <td className="p-6 text-right">
+                                                <div className="flex gap-2 justify-end">
+                                                    <button
+                                                        onClick={() => handleEdit(member)}
+                                                        className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+                                                    >
+                                                        ✏️
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(member)}
+                                                        className="text-red-600 hover:text-red-800 font-medium text-sm ml-4"
+                                                    >
+                                                        🗑️
+                                                    </button>
+                                                </div>                                                
+                                            </td>
+                                        </tr>
+                                    )
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+                
+                {membersList.length > 0 && 
+                    <Pagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        onPageChange={setCurrentPage}
+                    />
+                }
             </div>
 
             {/* Modal Component */}
@@ -132,53 +293,14 @@ export default function MembersPage() {
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 title={
-                    modalMode === "success"
-                        ? "Berhasil!"
-                        : modalMode === "delete"
+                    modalMode === "delete"
                             ? "Konfirmasi Hapus"
                             : modalMode === "add"
                                 ? "Tambah Anggota Baru"
                                 : "Edit Data Anggota"
                 }
             >
-                {modalMode === "success" ? (
-                    <div className="text-center py-4">
-                        <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 transform hover:scale-110 transition-transform">
-                            <span className="text-4xl">✅</span>
-                        </div>
-                        <h4 className="text-xl font-bold text-gray-900 mb-2">
-                            {successData?.mode === "delete"
-                                ? "Data Berhasil Dihapus!"
-                                : successData?.mode === "add"
-                                    ? "Anggota Berhasil Ditambahkan!"
-                                    : "Data Berhasil Diupdate!"}
-                        </h4>
-                        <div className="text-sm text-gray-500 bg-gray-50 p-4 rounded-xl border border-gray-100 mt-4 text-left space-y-2">
-                            {successData?.mode !== "delete" && (
-                                <>
-                                    <div className="flex justify-between">
-                                        <span>Nama:</span>
-                                        <span className="font-bold text-gray-900">{successData?.name}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span>NIM:</span>
-                                        <span className="font-mono text-gray-900">{successData?.nim}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span>Jabatan:</span>
-                                        <span className="font-medium text-blue-600">{successData?.role}</span>
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                        <button
-                            onClick={() => setIsModalOpen(false)}
-                            className="mt-8 w-full py-3 bg-gray-900 hover:bg-gray-800 text-white rounded-xl font-medium transition-all"
-                        >
-                            Tutup
-                        </button>
-                    </div>
-                ) : modalMode === "delete" ? (
+                {modalMode === "delete" ? (
                     <div className="text-center py-4">
                         <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
                             <span className="text-4xl">⚠️</span>
@@ -196,14 +318,15 @@ export default function MembersPage() {
                             </button>
                             <button
                                 onClick={confirmDelete}
+                                disabled={loading}
                                 className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold shadow-lg shadow-red-200 transition-all"
                             >
-                                Hapus
+                                {loading ? "loading... " : "hapus"}
                             </button>
                         </div>
                     </div>
                 ) : (
-                    <form onSubmit={handleSubmit} className="space-y-4">
+                    <form onSubmit={modalMode === "add" ? handleSubmit : handleSubmitEdit } className="space-y-4">
                         <div>
                             <label className="block text-sm font-bold text-gray-700 mb-1">Nama Lengkap</label>
                             <input
@@ -211,39 +334,27 @@ export default function MembersPage() {
                                 required
                                 className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-black"
                                 placeholder="Contoh: Budi Santoso"
-                                value={formData.name}
-                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-1">NIM</label>
-                            <input
-                                type="text"
-                                required
-                                className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-black"
-                                placeholder="Contoh: 21012345"
-                                value={formData.nim}
-                                onChange={(e) => setFormData({ ...formData, nim: e.target.value })}
+                                value={formData.nama}
+                                onChange={(e) => setFormData({ ...formData, nama: e.target.value })}
                             />
                         </div>
                         <div>
                             <label className="block text-sm font-bold text-gray-700 mb-1">Jabatan</label>
                             <input
                                 type="text"
-                                required
                                 className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-black"
                                 placeholder="Contoh: Ketua Himpunan"
-                                value={formData.role}
-                                onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                                value={formData.jabatan || ""}
+                                onChange={(e) => setFormData({ ...formData, jabatan: e.target.value })}
                             />
                         </div>
                         <div>
                             <label className="block text-sm font-bold text-gray-700 mb-1">Foto Profil</label>
                             <div className="flex items-center gap-4">
                                 <div className="h-16 w-16 rounded-full border-2 border-gray-200 overflow-hidden bg-gray-100 flex items-center justify-center">
-                                    {formData.image ? (
+                                    {imagePreview ? (
                                         <img
-                                            src={formData.image}
+                                            src={imagePreview}
                                             alt="Preview"
                                             className="h-full w-full object-cover"
                                         />
@@ -257,31 +368,87 @@ export default function MembersPage() {
                                         accept="image/*"
                                         className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-black text-sm file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-600 hover:file:bg-blue-100"
                                         onChange={(e) => {
-                                            const file = e.target.files[0];
-                                            if (file) {
-                                                const reader = new FileReader();
-                                                reader.onloadend = () => {
-                                                    setFormData({ ...formData, image: reader.result });
-                                                };
-                                                reader.readAsDataURL(file);
-                                            }
-                                        }}
+                                                            const file = e.target.files[0];
+
+                                                            if (file) {
+                                                                setFormData({ ...formData, foto: file });
+
+                                                                const previewUrl = URL.createObjectURL(file);
+                                                                setImagePreview(previewUrl);
+                                                            }
+                                                        }}
                                     />
-                                    <p className="text-xs text-gray-400 mt-1">Upload foto profil (opsional)</p>
                                 </div>
                             </div>
                         </div>
                         <div className="pt-4">
                             <button
+                                disabled={loading}
                                 type="submit"
                                 className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg shadow-blue-200 transition-all transform active:scale-95"
                             >
-                                {modalMode === "add" ? "Simpan Anggota" : "Simpan Perubahan"}
+                                
+                                {loading ? "loading... " : modalMode === "add" ? "Simpan Anggota" : "Simpan Perubahan"}
                             </button>
                         </div>
                     </form>
                 )}
             </Modal>
+            {/* Sukses Alert */}
+            <Modal
+                isOpen={isSuccessOpen}
+                onClose={() => setIsSuccessOpen(false)}
+                title={alertTitle}
+            >
+                <div className="text-center py-4">
+                    <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <span className="text-4xl">✅</span>
+                    </div>
+
+                    <h4 className="text-xl font-bold text-gray-900 mb-2">
+                        {alertTitle}
+                    </h4>
+
+                    <p className="text-gray-500 mb-6">
+                        {alertMessage}
+                    </p>
+
+                    <button
+                        onClick={() => setIsSuccessOpen(false)}
+                        className="w-full py-3 bg-gray-900 hover:bg-gray-800 text-white rounded-xl font-medium"
+                    >
+                        Tutup
+                    </button>
+                </div>
+            </Modal>
+
+            {/* Error Modal */}
+            <Modal
+                isOpen={isErrorOpen}
+                onClose={() => setIsErrorOpen(false)}
+                title="Terjadi Kesalahan"
+            >
+                <div className="text-center py-4">
+                    <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <span className="text-4xl">❌</span>
+                    </div>
+
+                    <h4 className="text-xl font-bold text-gray-900 mb-2">
+                        {alertTitle}
+                    </h4>
+
+                    <p className="text-gray-500 mb-6">
+                        {alertMessage}
+                    </p>
+
+                    <button
+                        onClick={() => setIsErrorOpen(false)}
+                        className="w-full py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-medium"
+                    >
+                        Tutup
+                    </button>
+                </div>
+            </Modal>              
         </div>
     );
 }

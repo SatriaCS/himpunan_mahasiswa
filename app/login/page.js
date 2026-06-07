@@ -9,19 +9,31 @@ export default function LoginPage() {
     const [password, setPassword] = useState("");
     const [isLoading, setIsLoading] = useState(false);
 
-    const handleLogin = (e) => {
-        e.preventDefault();
+    const handleLogin = async (e) => {
+        e.preventDefault()
         setIsLoading(true);
+        const res = await fetch("/api/login", {
+            method:"POST",
+            headers:{ "Content-Type":"application/json"},
+            body: JSON.stringify({
+                username,
+                password
+            })
+        });
 
-        // Mock Login Logic
-        setTimeout(() => {
-            setIsLoading(false);
-            if (username === "admin" && password === "admin123") {
-                router.push("/admin");
-            } else {
-                alert("Username atau password salah! (Hint: admin / admin123)");
+        const data = await res.json();
+
+        if(res.ok){
+            if(data.role === "super_admin"){
+                window.location.href = "/superadmin";
+            } 
+            else if(data.role === "admin"){
+                window.location.href = "/admin";
             }
-        }, 1500);
+        }else{
+            alert(data.message);
+        }
+        setIsLoading(false);
     };
 
     return (
@@ -36,13 +48,12 @@ export default function LoginPage() {
                         <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-blue-50 text-blue-600 text-3xl mb-4 shadow-inner">
                             🔐
                         </div>
-                        <h1 className="text-2xl font-bold text-gray-900">Admin Login</h1>
-                        <p className="text-gray-500 mt-2 text-sm">Masuk untuk mengelola portal himpunan</p>
+                        <h1 className="text-2xl font-bold text-gray-900">Login</h1>
                     </div>
 
                     <form onSubmit={handleLogin} className="space-y-6">
                         <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-2">Username Admin</label>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">Username</label>
                             <input
                                 type="text"
                                 required

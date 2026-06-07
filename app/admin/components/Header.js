@@ -5,7 +5,7 @@ export default function Header({ onMenuClick }) {
         <header className="bg-white border-b border-gray-200 h-16 px-4 md:px-8 flex items-center gap-4 sticky top-0 z-30">
             <button
                 onClick={onMenuClick}
-                className="p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-lg md:hidden"
+                className="p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-lg lg:hidden"
             >
                 <span className="text-2xl">☰</span>
             </button>

@@ -2,53 +2,85 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import Pagination from "../components/Pagination";
 
-const newsData = [
-    {
-        id: 1,
-        title: "Mahasiswa Berprestasi Tingkat Nasional Tahun 2024",
-        date: "10 okt 2026",
-        excerpt: "Mahasiswa Informatika kembali menorehkan prestasi membanggakan di kancah nasional.",
-        author: "Admin"
-    },
-    {
-        id: 2,
-        title: "Workshop UI/UX Design bersama Expert dari Gojek",
-        date: "10 okt 2026",
-        excerpt: "Himpunan Mahasiswa akan mengadakan workshop UI/UX Design yang menghadirkan praktisi langsung dari industri."
-    },
-    {
-        id: 3,
-        title: "Open Recruitment Pengurus Himpunan Periode 2025/2026",
-        date: "10 okt 2026",
-        excerpt: "Panggilan untuk seluruh mahasiswa aktif angkatan 2023 dan 2024! Himpunan Mahasiswa membuka kesempatan bagi kalian yang ingin belajar berorganisasi dan berkontribusi nyata bagi jurusan.",
-        author: "Admin"
-    },
-    {
-        id: 4,
-        title: "Kunjungan Industri ke Kantor Google Indonesia",
-        date: "10 okt 2026",
-        excerpt: "Himpunan Mahasiswa bekerjasama dengan Program Studi akan mengadakan Kunjungan Industri ke kantor Google Indonesia di Jakarta.",
-        author: "Admin"
-    }
-];
+
 
 export default function BeritaPage() {
     const [searchQuery, setSearchQuery] = useState("");
+    const [newsData, setNewsData] = useState([]);
 
-    // Filter Logic
-    const filteredNews = newsData.filter((news) =>
-        news.title.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    // pagination
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const limit = 6;
+    // loading 
+    const [loading, setLoading] = useState(true);
+
+    const [username,setUsername] = useState("");
+
+    function Skeleton() {
+        return (
+        <div className="animate-pulse rounded-2xl border border-gray-100 overflow-hidden">
+            <div className="h-56 bg-gray-200"></div>
+
+            <div className="p-8 space-y-4">
+            <div className="h-6 bg-gray-200 rounded w-3/4"></div>
+            <div className="h-4 bg-gray-200 rounded w-full"></div>
+            <div className="h-4 bg-gray-200 rounded w-5/6"></div>
+
+            <div className="pt-6 border-t">
+                <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+            </div>
+            </div>
+        </div>
+        );
+    }
+
+    const fetchNews = async (currentPage = 1) => {
+        try {
+            setLoading(true);
+
+            const res = await fetch(`/api/user/news?page=${currentPage}&limit=${limit}&search=${searchQuery}`,
+                {
+                    cache: "no-store"
+                }
+            );
+            const result = await res.json();
+            
+            setNewsData(result.data || []);
+            setTotalPages(result.totalPages || 1);
+            // AUTO FIX PAGE
+            if (currentPage > result.totalPages && result.totalPages > 0) {
+                setCurrentPage(result.totalPages);
+            }
+            setUsername(result.username)
+        } catch (err) {
+            console.log(err);
+        } finally {
+            setLoading(false);
+        }        
+    };
+
+    useEffect(() => {
+        fetchNews(currentPage)
+        sessionStorage.removeItem("view-berita");
+    }, [currentPage]);
+
+    useEffect(() => {
+        setCurrentPage(1); // reset ke halaman 1 saat search
+        fetchNews(1);
+    }, [searchQuery]);
+    
 
     return (
         <div className="min-h-screen bg-gray-50 py-12">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="text-center mb-12">
-                    <h1 className="text-3xl font-extrabold text-gray-900">Berita & Artikel</h1>
+                    <h1 className="text-3xl font-extrabold text-gray-900">Berita</h1>
                     <p className="mt-4 text-xl text-gray-500">
-                        Informasi terbaru seputar kegiatan akademik dan non-akademik.
+                        berita terbaru dari himpunan.
                     </p>
                 </div>
 
@@ -71,50 +103,96 @@ export default function BeritaPage() {
                 </div>
 
                 {/* News Grid */}
-                {filteredNews.length > 0 ? (
+                {loading
+                    ?
                     <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-                        {filteredNews.map((item) => (
-                            <div key={item.id} className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow duration-300 flex flex-col h-full">
-                                <div className="relative h-48 bg-gray-200 overflow-hidden shrink-0">
-                                    <Image
-                                        src="/default-news.png"
-                                        alt={item.title}
-                                        fill
-                                        className="object-cover hover:scale-105 transition-transform duration-500"
-                                    />
-                                </div>
-                                <div className="p-6 flex flex-col flex-grow">
-                                    <h3 className="text-xl font-bold text-gray-900 mb-2 line-clamp-2">
-                                        <Link href={`/berita/${item.id}`} className="hover:text-blue-600 transition-colors">
-                                            {item.title}
-                                        </Link>
-                                    </h3>
-                                    <p className="text-gray-600 text-sm mb-4 line-clamp-3 flex-grow">
-                                        {item.excerpt}
-                                    </p>
-                                    <div className="flex items-center justify-between text-xs text-gray-500 mt-auto pt-4 border-t border-gray-100">
-                                        <span className="flex items-center gap-1">
-                                            👤 {item.author}
-                                        </span>
-                                        <span className="flex items-center gap-1">
-                                            📅 {item.date}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
+                        {Array.from({ length: 3 }).map((_, i) => (
+                            <Skeleton key={i} />
                         ))}
-                    </div>
-                ) : (
-                    <div className="text-center py-20">
-                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
-                            <svg className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                        </div>
-                        <h3 className="text-lg font-medium text-gray-900">Tidak ada berita ditemukan</h3>
-                        <p className="mt-1 text-gray-500">Coba kata kunci lain atau periksa ejaan Anda.</p>
-                    </div>
-                )}
+                    </div> 
+                    :
+                        newsData.length > 0 ? (
+                            <div>
+                                <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+                                    {newsData.map((item) => (
+                                        <div
+                                            key={item.slug}
+                                            className="group flex flex-col rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 overflow-hidden"
+                                        >
+                                            <div className="aspect-[16/9] w-full overflow-hidden relative bg-gray-100 flex items-center justify-center">
+                                            {item.username ?
+                                                <img
+                                                    src={`/uploads/news/${item.username}/${item.thumbnail}`}
+                                                    alt={item.judul}
+                                                    className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-500"
+                                                /> : 
+                                                <img
+                                                    src={`/uploads/news/${username}/${item.thumbnail}`}
+                                                    alt={item.judul}
+                                                    className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-500"
+                                                />
+                                            }
+                                            
+                                            </div>
+                                            <div className="flex-1 bg-white p-8 flex flex-col justify-between">
+                                            <div className="flex-1">
+                                                <Link href={`/berita/${item.slug}`} className="block mt-3">
+                                                <h3 className="text-xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-2">
+                                                    {item.judul}
+                                                </h3>
+                                                <p className="mt-4 text-base text-gray-500 leading-relaxed line-clamp-3">
+                                                    {item.deskripsi}
+                                                </p>
+                                                </Link>
+                                            </div>
+                                            <div className="mt-8 flex items-center border-t border-gray-100 pt-6">
+                                                <div className="ml-3">
+                                                {item.nama && 
+                                                    <p className="text-sm font-medium text-gray-900">
+                                                        oleh {item.nama}
+                                                    </p>
+                                                }                                                
+                                                <div className="flex space-x-1 text-sm text-gray-500">
+                                                    {
+                                                    item.updated_at
+                                                        ? `Updated : ${new Date(item.updated_at).toLocaleDateString("id-ID", {
+                                                        day: "numeric",
+                                                        month: "long",
+                                                        year: "numeric"
+                                                        })}`
+                                                        : new Date(item.created_at).toLocaleDateString("id-ID", {
+                                                        day: "numeric",
+                                                        month: "long",
+                                                        year: "numeric"
+                                                        })
+                                                    }
+                                                </div>
+                                                </div>
+                                            </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                {newsData.length !== 0 && 
+                                    <Pagination
+                                        currentPage={currentPage}
+                                        totalPages={totalPages}
+                                        onPageChange={setCurrentPage}
+                                    />
+                                }
+                            </div>                          
+                            
+                        ) : (
+                            <div className="text-center py-20">
+                                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
+                                    <svg className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
+                                <h3 className="text-lg font-medium text-gray-900">Tidak ada berita ditemukan</h3>
+                                <p className="mt-1 text-gray-500">Coba kata kunci lain atau periksa ejaan Anda.</p>
+                            </div>
+                        )}
             </div>
         </div>
     );

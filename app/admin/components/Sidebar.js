@@ -15,11 +15,17 @@ const menuItems = [
 
 export default function Sidebar({ isOpen, onClose }) {
     const pathname = usePathname();
+    const handleLogout = async () => {
+        await fetch("/api/logout", {
+            method: "POST",
+        });
 
+        window.location.replace("/login");
+    };
     const sidebarClasses = `
-        fixed md:static inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-200 
-        transform transition-transform duration-300 ease-in-out h-screen md:h-auto md:min-h-screen flex flex-col
-        ${isOpen ? "translate-x-0 shadow-xl" : "-translate-x-full md:translate-x-0 md:shadow-none"}
+        fixed lg:static inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-200 
+        transform transition-transform duration-300 ease-in-out h-screen lg:h-auto lg:min-h-screen flex flex-col
+        ${isOpen ? "translate-x-0 shadow-xl" : "-translate-x-full lg:translate-x-0 lg:shadow-none"}
     `;
 
     return (
@@ -34,10 +40,10 @@ export default function Sidebar({ isOpen, onClose }) {
 
             <aside className={sidebarClasses}>
                 <div className="p-6 flex justify-between items-center shrink-0">
-                    <h1 className="text-2xl font-bold text-blue-700">Hima Admin</h1>
+                    <h1 className="text-2xl font-bold text-blue-700">Dashboard</h1>
                     <button
                         onClick={onClose}
-                        className="p-1 text-gray-400 hover:text-gray-600 md:hidden"
+                        className="p-1 text-gray-400 hover:text-gray-600 lg:hidden"
                     >
                         ✕
                     </button>
@@ -63,16 +69,14 @@ export default function Sidebar({ isOpen, onClose }) {
                                 </li>
                             );
                         })}
+                        <li>
+                                <button onClick={handleLogout} className="flex items-center gap-3 px-4 py-3 w-full text-red-600 hover:bg-red-50 rounded-xl transition-all">
+                                    <span className="font-medium">Keluar</span>
+                                </button>
+                        </li>
+                        
                     </ul>
                 </nav>
-
-                <div className="p-4 border-t border-gray-200 bg-white shrink-0">
-                    <Link href="/login">
-                        <button className="flex items-center gap-3 px-4 py-3 w-full text-red-600 hover:bg-red-50 rounded-xl transition-all">
-                            <span className="font-medium">Keluar</span>
-                        </button>
-                    </Link>
-                </div>
             </aside>
         </>
     );
