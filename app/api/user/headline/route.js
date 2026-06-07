@@ -80,7 +80,6 @@ export async function GET(req) {
         });
 
     } catch (error) {
-        console.log(error.message);
         
         return NextResponse.json(
             { message: "Internal server  error" },

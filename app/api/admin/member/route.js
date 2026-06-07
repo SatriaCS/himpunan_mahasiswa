@@ -523,7 +523,6 @@ export async function PUT(req) {
         });
 
     } catch (error) {
-        console.log(error.message);
         
         await conn.rollback();
         // 🔥 HAPUS FILE JIKA SUDAH TERSIMPAN

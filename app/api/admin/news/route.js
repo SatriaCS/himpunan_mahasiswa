@@ -269,6 +269,7 @@ export async function GET(req) {
                 b.judul,
                 b.thumbnail,
                 b.deskripsi,
+                b.views,
                 b.created_at,
                 b.updated_at,
                 a.username

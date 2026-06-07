@@ -276,6 +276,11 @@ export default function NewsPage() {
                                                     </button>
                                                 </div>
                                             </div>
+                                            <div className="flex justify-between items-start mb-4">
+                                                <span className="px-3 py-1 bg-green-50 text-gray-600 border border-gray-200 rounded-full text-[10px] font-bold flex items-center gap-1">
+                                                        {item.views} Views
+                                                </span>
+                                            </div>
                                             <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2 leading-tight">
                                                 {item.judul}
                                             </h3>

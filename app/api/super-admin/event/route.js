@@ -141,7 +141,6 @@ export async function GET(req) {
         });
 
     } catch (error) {
-        console.log(error.message);
         
         return NextResponse.json(
             { message: "Internal server error" },
@@ -290,7 +289,6 @@ export async function POST(req) {
     } catch (error) {
 
         await conn.rollback();
-        console.log(error.message);
         
         // 🔥 HAPUS FILE JIKA SUDAH TERSIMPAN
         if (filePath && fs.existsSync(filePath)) {
@@ -511,7 +509,6 @@ export async function PUT(req) {
 
     } catch (error) {
         await conn.rollback();
-        console.log(error.message);
         
         // 🔥 HAPUS FILE JIKA SUDAH TERSIMPAN
         if (filePath && fs.existsSync(filePath)) {
@@ -664,7 +661,6 @@ export async function DELETE(req) {
 
     } catch (error) {
         await conn.rollback();
-        console.log(error.message);
         
         return NextResponse.json(
             { message: "Terjadi kesalahan server" },

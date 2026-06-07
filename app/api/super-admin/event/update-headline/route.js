@@ -49,7 +49,6 @@ export async function PUT(req) {
 
     } catch (error) {
         await conn.rollback();
-        console.log(error.message);
         
         return NextResponse.json(
             { message: "Terjadi kesalahan server" },
