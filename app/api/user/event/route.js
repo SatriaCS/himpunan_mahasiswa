@@ -10,10 +10,6 @@ export async function GET(req) {
 
         const offset = (page - 1) * limit;
 
-        const [[user]] = await db.query(
-            "SELECT username FROM super_admin WHERE id_akun=1"
-        );
-
         const [event] = await db.query(`
             SELECT 
                 k.slug,
@@ -25,12 +21,9 @@ export async function GET(req) {
                 k.tempat,
                 k.waktu,
                 k.kouta,
-                a.username,
                 k.link_pendaftaran as link
             FROM kegiatan k
             LEFT JOIN hima h ON k.id_hima = h.id_hima
-            LEFT JOIN akun a ON h.id_akun = a.id_akun
-            WHERE k.tanggal >= CURDATE()
             ORDER BY k.tanggal ASC
             LIMIT ? OFFSET ?
         `,[limit, offset]);
@@ -49,7 +42,6 @@ export async function GET(req) {
         return NextResponse.json({
             data: event,
             total: total.total,
-            username: user.username,
             page,
             limit,
             totalPages: Math.ceil(total.total / limit)
