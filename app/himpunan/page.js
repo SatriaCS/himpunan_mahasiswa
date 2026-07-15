@@ -157,6 +157,25 @@ export default function ProfileListPage() {
                     />
                 }
             </div>
+
+             <div className="mt-3 mb-3 max-w-3xl mx-auto rounded-2xl border border-blue-100 bg-blue-50 px-6 py-5 sm:flex sm:items-center sm:justify-between sm:gap-6">
+                            <div className="text-left">
+                                <p className="text-lg font-bold text-gray-900">
+                                    Ingin himpunan Anda tampil pada web?
+                                </p>
+                                <p className="mt-1 text-base text-gray-600">
+                                    Ayo bergabung ikut menyebarkan informasi profil, kegiatan dan berita seputar himpunan mahasiswa Anda.
+                                </p>
+                            </div>
+                            <a
+                                href="https://wa.me/6283119968079?text=Halo%2C%20saya%20tertarik%20untuk%20bergabung%20menjadi%20admin%20untuk%20membagikan%20informasi%20himpunan%20mahasiswa%20saya."
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="mt-4 inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 sm:mt-0 sm:shrink-0"
+                            >
+                                Hubungi Kami
+                            </a>
+            </div>
         </div>
     );
 }
