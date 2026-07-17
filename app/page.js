@@ -215,7 +215,7 @@ export default function Home() {
               >
                 {headline.map((item) => {
                   const img = item.type === "event"
-                    ? `/uploads/event/${item.username ?? username}/${item.flayer}`
+                    ?item.flayer
                     : `/uploads/news/${item.username ?? username}/${item.thumbnail}`;
                   const hasImage = !!(item.flayer || item.thumbnail);
                   const isLongDescription = (item.deskripsi || "").length > 180;
@@ -446,13 +446,13 @@ export default function Home() {
                                 {event.flayer ? 
                                       event.username ? 
                                         <Image
-                                          src={`/uploads/event/${event.username}/${event.flayer}`}
+                                          src={event.flayer}
                                           alt={event.judul}
                                           fill
                                           className="object-contain group-hover:scale-105 transition-transform duration-500"                                    
                                         /> :
                                         <Image
-                                          src={`/uploads/event/${usernameEvent}/${event.flayer}`}
+                                          src={event.flayer}
                                           alt={event.judul}
                                           fill
                                           className="object-contain group-hover:scale-105 transition-transform duration-500"                                    

@@ -95,7 +95,7 @@ export default function EventsPage() {
         setSelectedEvent(event);        
         setModalMode("edit");
         if (event.flayer) {
-            setImagePreview(`/uploads/event/${event.username}/${event.flayer}`);
+            setImagePreview(event.flayer);
         }        
         setFormData({
             judul: event.judul,
@@ -295,7 +295,7 @@ export default function EventsPage() {
                                         <div className="w-full md:w-48 h-48 md:h-auto shrink-0">
                                             {event.flayer ? (
                                                     <img
-                                                        src={`/uploads/event/${event.username}/${event.flayer}`}
+                                                        src={event.flayer}
                                                         alt={event.judul}
                                                         className="h-full object-contain rounded-xl bg-gray-50"
                                                     />

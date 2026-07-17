@@ -90,13 +90,13 @@ export default function KegiatanPage() {
                                     {item.flayer ? 
                                             item.username ?
                                                 <Image
-                                                    src={`/uploads/event/${item.username}/${item.flayer}`}
+                                                    src={item.flayer}
                                                     alt={item.judul}
                                                     fill
                                                     className="object-contain group-hover:scale-105 transition-transform duration-500"                                    
                                                 /> 
                                             :   <Image
-                                                    src={`/uploads/event/${username}/${item.flayer}`}
+                                                    src={item.flayer}
                                                     alt={item.judul}
                                                     fill
                                                     className="object-contain group-hover:scale-105 transition-transform duration-500"                                    

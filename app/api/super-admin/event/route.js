@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 import db from "@/lib/db";
-import fs from "fs";
-import path from "path";
 import { verifySuperAdmin } from "@/lib/auth";
+import { put, del } from "@vercel/blob";
 
 const slugify = (text) => {
     return text
@@ -157,7 +156,7 @@ export async function POST(req) {
         return auth;
     }
     const conn = await db.getConnection();
-    let filePath = null;
+    let uploadedBlobUrl = null;
     try {
 
         /* ======================
@@ -233,24 +232,45 @@ export async function POST(req) {
         let fileName = null;
 
         if (fileFlayer && fileFlayer.size > 0) {
+            /* ======================
+            VALIDASI UKURAN FILE
+            ====================== */
+            const MAX_SIZE = 5 * 1024 * 1024; // 5MB
 
-            const uploadDir = path.join(
-                process.cwd(),
-                "public/uploads/event",
-                user.username
-            );
-
-            if (!fs.existsSync(uploadDir)) {
-                fs.mkdirSync(uploadDir, { recursive: true });
+            if (fileFlayer.size > MAX_SIZE) {
+                return NextResponse.json(
+                    { message: "Ukuran foto maksimal 5MB" },
+                    { status: 400 }
+                );
             }
 
-            const buffer = Buffer.from(
-                await fileFlayer.arrayBuffer()
+            /* ======================
+            VALIDASI IMAGE
+            ====================== */
+            const allowedTypes = [
+                "image/jpeg",
+                "image/png",
+                "image/webp",
+                "image/jpg"
+            ];
+
+            if (!allowedTypes.includes(fileFlayer.type)) {
+                return NextResponse.json(
+                    { message: "Format foto harus JPG, PNG, atau WEBP" },
+                    { status: 400 }
+                );
+            }
+
+            const blob = await put(
+                `event/${user.username}/${Date.now()}-${fileFlayer.name}`,
+                fileFlayer,
+                {
+                    access: "public",
+                }
             );
 
-            fileName = `${Date.now()}-${fileFlayer.name}`;
-            filePath = path.join(uploadDir, fileName);
-            fs.writeFileSync(filePath, buffer);
+            uploadedBlobUrl = blob.url;
+            fileName = blob.url;
 
         }
         await conn.beginTransaction();
@@ -291,8 +311,14 @@ export async function POST(req) {
         await conn.rollback();
         
         // 🔥 HAPUS FILE JIKA SUDAH TERSIMPAN
-        if (filePath && fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
+        console.error("Gagal membuat kegiatan:", error);
+
+        if (uploadedBlobUrl) {
+            try {
+                await del(uploadedBlobUrl);
+            } catch (deleteError) {
+                console.error("Gagal menghapus flayer baru:", deleteError);
+            }
         }
         
         return NextResponse.json(
@@ -313,7 +339,7 @@ export async function PUT(req) {
         return auth;
     }
     const conn = await db.getConnection();
-    let filePath = null;
+    let uploadedBlobUrl = null;
     try {
 
         /* ======================
@@ -434,27 +460,51 @@ export async function PUT(req) {
         const oldFlayer = kegiatan.flayer;
         let fileName = oldFlayer;
         
-        const uploadDir = path.join(
-                process.cwd(),
-                "public/uploads/event",
-                kegiatan.id_hima ? akun.username : user.username,
-            );
-        
         /* ======================
            UPDATE FLAYER OPTIONAL
         ====================== */
         if (fileFlayer && fileFlayer.size > 0) {
+            /* ======================
+            VALIDASI UKURAN FILE
+            ====================== */
+            const MAX_SIZE = 5 * 1024 * 1024; // 5MB
 
-            if (!fs.existsSync(uploadDir)) {
-                fs.mkdirSync(uploadDir, { recursive: true });
+            if (fileFlayer.size > MAX_SIZE) {
+                return NextResponse.json(
+                    { message: "Ukuran foto maksimal 5MB" },
+                    { status: 400 }
+                );
             }
 
-            const bytes = await fileFlayer.arrayBuffer();
-            const buffer = Buffer.from(bytes);
+            /* ======================
+            VALIDASI IMAGE
+            ====================== */
+            const allowedTypes = [
+                "image/jpeg",
+                "image/png",
+                "image/webp",
+                "image/jpg"
+            ];
 
-            fileName = `${Date.now()}-${fileFlayer.name}`;
-            filePath = path.join(uploadDir, fileName);
-            fs.writeFileSync(filePath, buffer);
+            if (!allowedTypes.includes(fileFlayer.type)) {
+                return NextResponse.json(
+                    { message: "Format foto harus JPG, PNG, atau WEBP" },
+                    { status: 400 }
+                );
+            }
+
+            const uploadUsername = kegiatan.id_hima ? akun.username : user.username;
+
+            const blob = await put(
+                `event/${uploadUsername}/${Date.now()}-${fileFlayer.name}`,
+                fileFlayer,
+                {
+                    access: "public",
+                }
+            );
+
+            uploadedBlobUrl = blob.url;
+            fileName = blob.url;
             
         }
         await conn.beginTransaction();
@@ -492,15 +542,11 @@ export async function PUT(req) {
         await conn.commit();
 
         /* hapus file lama jika upload baru */
-        if (
-            fileFlayer &&
-            fileFlayer.size > 0 &&
-            oldFlayer
-        ) {
-            const oldPath = path.join(uploadDir, oldFlayer);
-
-            if (fs.existsSync(oldPath)) {
-                fs.unlinkSync(oldPath);
+        if (fileFlayer && fileFlayer.size > 0 && oldFlayer) {
+            try {
+                await del(oldFlayer);
+            } catch (deleteError) {
+                console.error("Gagal menghapus flayer lama:", deleteError);
             }
         }
         return NextResponse.json({
@@ -508,14 +554,20 @@ export async function PUT(req) {
         });
 
     } catch (error) {
-        await conn.rollback();
-        
-        // 🔥 HAPUS FILE JIKA SUDAH TERSIMPAN
-        if (filePath && fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
+         await conn.rollback();
+
+        console.error("Gagal membuat kegiatan:", error);
+
+        if (uploadedBlobUrl) {
+            try {
+                await del(uploadedBlobUrl);
+            } catch (deleteError) {
+                console.error("Gagal menghapus flayer baru:", deleteError);
+            }
         }
+
         return NextResponse.json(
-            { message: "Terjadi kesalahan server" },
+            { message: "Internal server error" },
             { status: 500 }
         );
     } finally {
@@ -643,16 +695,10 @@ export async function DELETE(req) {
            HAPUS FILE FLAYER
         ====================== */
         if (kegiatan.flayer) {
-
-            const filePath = path.join(
-                process.cwd(),
-                "public/uploads/event",
-                kegiatan.id_hima ? akun.username : user.username,
-                kegiatan.flayer
-            );
-
-            if (fs.existsSync(filePath)) {
-                fs.unlinkSync(filePath);
+            try {
+                await del(kegiatan.flayer);
+            } catch (deleteError) {
+                console.error("Gagal menghapus flayer:", deleteError);
             }
         }
         return NextResponse.json({

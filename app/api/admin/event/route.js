@@ -4,6 +4,7 @@ import db from "@/lib/db";
 import fs from "fs";
 import path from "path";
 import { verifyAdmin } from "@/lib/auth";
+import { put, del } from "@vercel/blob";
 
 export async function GET(req) {
     const auth = verifyAdmin(req);
@@ -131,7 +132,7 @@ export async function POST(req) {
         return auth;
     }
     const conn = await db.getConnection();
-    let filePath = null;
+    let uploadedBlobUrl = null;
     try {
 
         /* ======================
@@ -248,23 +249,15 @@ export async function POST(req) {
                 );
             }
 
-            const uploadDir = path.join(
-                process.cwd(),
-                "public/uploads/event",
-                user.username
+            const blob = await put(
+                `event/${user.username}/${Date.now()}-${fileFlayer.name}`,
+                fileFlayer,
+                {
+                    access: "public",
+                }
             );
-
-            if (!fs.existsSync(uploadDir)) {
-                fs.mkdirSync(uploadDir, { recursive: true });
-            }
-
-            const buffer = Buffer.from(
-                await fileFlayer.arrayBuffer()
-            );
-
-            fileName = `${Date.now()}-${fileFlayer.name}`;
-            filePath = path.join(uploadDir, fileName);
-            fs.writeFileSync(filePath, buffer);
+            uploadedBlobUrl = blob.url;
+            fileName = blob.url;
 
         }
         await conn.beginTransaction();
@@ -304,11 +297,9 @@ export async function POST(req) {
     } catch (error) {
 
         await conn.rollback();
-        // 🔥 HAPUS FILE JIKA SUDAH TERSIMPAN
-        if (filePath && fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
+        if (uploadedBlobUrl) {
+            await del(uploadedBlobUrl);
         }
-        
         return NextResponse.json(
             { message: "Internal server error" },
             { status: 500 }
@@ -327,7 +318,7 @@ export async function PUT(req) {
         return auth;
     }
     const conn = await db.getConnection();
-    let filePath = null;
+    let uploadedBlobUrl = null;
     try {
 
         /* ======================
@@ -429,13 +420,7 @@ export async function PUT(req) {
 
         const oldFlayer = kegiatan.flayer;
         let fileName = oldFlayer;
-        
-        const uploadDir = path.join(
-                process.cwd(),
-                "public/uploads/event",
-                user.username
-            );
-        
+
         /* ======================
            UPDATE FLAYER OPTIONAL
         ====================== */
@@ -468,17 +453,17 @@ export async function PUT(req) {
                     { status: 400 }
                 );
             }
-            
-            if (!fs.existsSync(uploadDir)) {
-                fs.mkdirSync(uploadDir, { recursive: true });
-            }
 
-            const bytes = await fileFlayer.arrayBuffer();
-            const buffer = Buffer.from(bytes);
+            const blob = await put(
+                `event/${user.username}/${Date.now()}-${fileFlayer.name}`,
+                fileFlayer,
+                {
+                    access: "public",
+                }
+            );
 
-            fileName = `${Date.now()}-${fileFlayer.name}`;
-            filePath = path.join(uploadDir, fileName);
-            fs.writeFileSync(filePath, buffer);
+            uploadedBlobUrl = blob.url;
+            fileName = blob.url;
             
         }
         await conn.beginTransaction();
@@ -517,15 +502,11 @@ export async function PUT(req) {
         await conn.commit();
 
         /* hapus file lama jika upload baru */
-        if (
-            fileFlayer &&
-            fileFlayer.size > 0 &&
-            oldFlayer
-        ) {
-            const oldPath = path.join(uploadDir, oldFlayer);
-
-            if (fs.existsSync(oldPath)) {
-                fs.unlinkSync(oldPath);
+        if (fileFlayer && fileFlayer.size > 0 && oldFlayer) {
+            try {
+                await del(oldFlayer);
+            } catch (deleteError) {
+                console.error("Gagal menghapus flayer lama:", deleteError);
             }
         }
         return NextResponse.json({
@@ -534,12 +515,19 @@ export async function PUT(req) {
 
     } catch (error) {
         await conn.rollback();
-        // 🔥 HAPUS FILE JIKA SUDAH TERSIMPAN
-        if (filePath && fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
+
+        console.error("Gagal membuat kegiatan:", error);
+
+        if (uploadedBlobUrl) {
+            try {
+                await del(uploadedBlobUrl);
+            } catch (deleteError) {
+                console.error("Gagal menghapus flayer baru:", deleteError);
+            }
         }
+
         return NextResponse.json(
-            { message: "Terjadi kesalahan server" },
+            { message: "Internal server error" },
             { status: 500 }
         );
     } finally {
@@ -577,20 +565,8 @@ export async function DELETE(req) {
         const id_akun = decoded.id;
         
         /* ======================
-           AMBIL USER + HIMA
+           AMBIL HIMA
         ====================== */
-        const [[user]] = await conn.query(
-            "SELECT username FROM akun WHERE id_akun=?",
-            [id_akun]
-        );
-
-        if (!user) {
-            return NextResponse.json(
-                { message: "Data tidak ditemukan" },
-                { status: 404 }
-            );
-        }
-
         const [[hima]] = await conn.query(
             "SELECT id_hima FROM hima WHERE id_akun=?",
             [id_akun]
@@ -649,16 +625,10 @@ export async function DELETE(req) {
            HAPUS FILE FLAYER
         ====================== */
         if (kegiatan.flayer) {
-
-            const filePath = path.join(
-                process.cwd(),
-                "public/uploads/event",
-                user.username,
-                kegiatan.flayer
-            );
-
-            if (fs.existsSync(filePath)) {
-                fs.unlinkSync(filePath);
+            try {
+                await del(kegiatan.flayer);
+            } catch (deleteError) {
+                console.error("Gagal menghapus flayer:", deleteError);
             }
         }
         return NextResponse.json({
