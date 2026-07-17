@@ -101,9 +101,9 @@ export default function EventsPage() {
         setModalMode("edit");
         if (event.flayer) {
             {event.username ? 
-                setImagePreview(`/uploads/event/${event.username}/${event.flayer}`)
+                setImagePreview(event.flayer)
                 :
-                setImagePreview(`/uploads/event/${username}/${event.flayer}`)
+                setImagePreview(event.flayer)
             }            
         }        
         setFormData({
@@ -379,12 +379,12 @@ export default function EventsPage() {
                                             {event.flayer ? (
                                                     event.username ?
                                                     <img
-                                                        src={`/uploads/event/${event.username}/${event.flayer}`}
+                                                        src={event.flayer}
                                                         alt={event.judul}
                                                         className="h-full object-contain rounded-xl bg-gray-50"
                                                     />
                                                     : <img
-                                                        src={`/uploads/event/${username}/${event.flayer}`}
+                                                        src={event.flayer}
                                                         alt={event.judul}
                                                         className="h-full object-contain rounded-xl bg-gray-50"
                                                     />
