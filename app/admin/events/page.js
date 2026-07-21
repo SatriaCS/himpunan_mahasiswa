@@ -51,6 +51,7 @@ export default function EventsPage() {
     const [loadingData, setLoadingData] = useState(true);
 
     const fetchEvent = async (currentPage = 1) => {
+        try{
         setLoadingData(true)
 
         const res = await fetch(`/api/admin/event?page=${currentPage}&limit=${limit}`,
@@ -58,6 +59,12 @@ export default function EventsPage() {
                 cache: "no-store"
             }
         );
+        if (!res.ok) {
+                // Ambil pesan error dari backend
+                const errorData = await res.json(); 
+                // Lempar error agar masuk ke blok catch
+                throw new Error(errorData.message || `Gangguan. Silakan coba beberapa saat lagi.`);
+        }
         const result = await res.json();
         
         setEvents(result.data);
@@ -67,7 +74,11 @@ export default function EventsPage() {
             setCurrentPage(result.totalPages);
         }
 
-        setLoadingData(false)
+        } catch (err) {
+            alert(err.message)
+        } finally {
+            setLoadingData(false);
+        }
     };
 
     useEffect(() => {
@@ -134,8 +145,10 @@ export default function EventsPage() {
             const result = await res.json();
 
             if (!res.ok) {
-                showError(result.message);
-                return;
+                    // Ambil pesan error dari backend
+                    const errorData = await res.json(); 
+                    // Lempar error agar masuk ke blok catch
+                    throw new Error(errorData.message || `Gangguan. Silakan coba beberapa saat lagi.`);
             }
 
             showSuccess(result.message);
@@ -184,8 +197,10 @@ export default function EventsPage() {
             const result = await res.json();
 
             if (!res.ok) {
-                showError(result.message);
-                return;
+                    // Ambil pesan error dari backend
+                    const errorData = await res.json(); 
+                    // Lempar error agar masuk ke blok catch
+                    throw new Error(errorData.message || `Gangguan. Silakan coba beberapa saat lagi.`);
             }
 
             showSuccess(result.message);
@@ -239,8 +254,10 @@ export default function EventsPage() {
             const result = await res.json();
 
             if (!res.ok) {
-                showError(result.message);
-                return;
+                    // Ambil pesan error dari backend
+                    const errorData = await res.json(); 
+                    // Lempar error agar masuk ke blok catch
+                    throw new Error(errorData.message || `Gangguan. Silakan coba beberapa saat lagi.`);
             }
 
             showSuccess(result.message);

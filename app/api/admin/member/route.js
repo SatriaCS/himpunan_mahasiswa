@@ -4,6 +4,7 @@ import db from "@/lib/db";
 import fs from "fs";
 import path from "path";
 import { verifyAdmin } from "@/lib/auth";
+import { put, del } from "@vercel/blob";
 
 export async function GET(req) {
     const auth = verifyAdmin(req);
@@ -77,7 +78,23 @@ export async function GET(req) {
         });
 
     } catch (error) {
+        console.error("[ERROR] GET /api/admin/member:", error);
+        //  Cek apakah error terkait jaringan/koneksi database
+        const isConnectionError = 
+            error.code === 'ETIMEDOUT' || 
+            error.code === 'PROTOCOL_SEQUENCE_TIMEOUT' ||
+            error.code === 'ECONNRESET' ||  
+            error.code === 'ECONNREFUSED' || 
+            error.name === 'TimeoutError';
 
+        if (isConnectionError) {
+            return NextResponse.json(
+                { 
+                    message: "Gangguan koneksi Gagal Memuat data anggota. Silakan coba beberapa saat lagi.",
+                },
+                { status: 503 } // 503 Service Unavailable atau 504 Gateway Timeout lebih cocok
+            );
+        }
         return NextResponse.json(
             { message: "Internal server error" },
             { status: 401 }
@@ -93,7 +110,7 @@ export async function POST(req) {
         return auth;
     }
     const conn = await db.getConnection();
-    let filePath = null;
+    let uploadedBlobUrl = null;
     let fileName = null;
     try {
 
@@ -116,10 +133,10 @@ export async function POST(req) {
         const id_akun = decoded.id;
     
         /* ======================
-           AMBIL USER + HIMA
+           AMBIL HIMA
         ====================== */
         const [[user]] = await conn.query(
-            "SELECT username FROM akun WHERE id_akun=?",
+            "SELECT folder_name FROM hima WHERE id_akun=?",
             [id_akun]
         );
 
@@ -190,27 +207,18 @@ export async function POST(req) {
             }
 
             /* ======================
-            BUAT FOLDER UPLOAD
+            UPLOAD TO VERCEL BLOB
             ====================== */
-            const uploadDir = path.join(
-                process.cwd(),
-                "public/uploads/member",
-                user.username
+            const blob = await put(
+                `member/${user.folder_name}/${Date.now()}-${file.name}`,
+                file,
+                {
+                    access: "public",
+                }
             );
 
-            if (!fs.existsSync(uploadDir)) {
-                fs.mkdirSync(uploadDir, { recursive: true });
-            }
-
-            /* ======================
-            SIMPAN FILE
-            ====================== */
-            const bytes = await file.arrayBuffer();
-            const buffer = Buffer.from(bytes);
-
-            fileName = `${Date.now()}-${file.name}`;
-            filePath = path.join(uploadDir, fileName);
-            fs.writeFileSync(filePath, buffer);
+            uploadedBlobUrl = blob.url;
+            fileName = blob.url;
         }        
 
         await conn.beginTransaction();
@@ -232,13 +240,33 @@ export async function POST(req) {
         });
 
     } catch (error) {
-        
+        console.error("[ERROR] POST /api/admin/member:", error);
         await conn.rollback();
-        // 🔥 HAPUS FILE JIKA SUDAH TERSIMPAN
-        if (filePath && fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
+        // 🔥 HAPUS BLOB JIKA SUDAH TERSIMPAN
+        if (uploadedBlobUrl) {
+            try {
+                await del(uploadedBlobUrl);
+            } catch (deleteError) {
+                console.error("Gagal menghapus foto baru dari blob:", deleteError);
+            }
         }
         
+        //  Cek apakah error terkait jaringan/koneksi database
+        const isConnectionError = 
+            error.code === 'ETIMEDOUT' || 
+            error.code === 'PROTOCOL_SEQUENCE_TIMEOUT' ||
+            error.code === 'ECONNRESET' ||  
+            error.code === 'ECONNREFUSED' || 
+            error.name === 'TimeoutError';
+
+        if (isConnectionError) {
+            return NextResponse.json(
+                { 
+                    message: "Gangguan koneksi Gagal Menambah data anggota. Silakan coba beberapa saat lagi.",
+                },
+                { status: 503 } // 503 Service Unavailable atau 504 Gateway Timeout lebih cocok
+            );
+        }
         return NextResponse.json(
             { message: "Internal server error" },
             { status: 500 }
@@ -325,26 +353,38 @@ export async function DELETE(req) {
 
         if (member.foto) {
             /* ======================
-            HAPUS FILE FOTO
+            HAPUS FILE FOTO / BLOB
             ====================== */
-            const filePath = path.join(
-                process.cwd(),
-                "public/uploads/member",
-                member.username,
-                member.foto
-            );
-
-            if (fs.existsSync(filePath)) {
-                fs.unlinkSync(filePath);
-            }
+                try {
+                    await del(member.foto);
+                } catch (deleteError) {
+                    console.error("Gagal menghapus foto anggota dari blob:", deleteError);
+                }
         }
         
         return NextResponse.json({
             message: "Anggota berhasil dihapus"
         });
 
-    } catch (error) {       
+    } catch (error) {
+        console.error("[ERROR] DELETE /api/admin/member:", error);
         await conn.rollback(); 
+        //  Cek apakah error terkait jaringan/koneksi database
+        const isConnectionError = 
+            error.code === 'ETIMEDOUT' || 
+            error.code === 'PROTOCOL_SEQUENCE_TIMEOUT' ||
+            error.code === 'ECONNRESET' ||  
+            error.code === 'ECONNREFUSED' || 
+            error.name === 'TimeoutError';
+
+        if (isConnectionError) {
+            return NextResponse.json(
+                { 
+                    message: "Gangguan koneksi Gagal Menghapus data anggota. Silakan coba beberapa saat lagi.",
+                },
+                { status: 503 } // 503 Service Unavailable atau 504 Gateway Timeout lebih cocok
+            );
+        }
         return NextResponse.json(
             { message: "Internal server error" },
             { status: 500 }
@@ -362,7 +402,7 @@ export async function PUT(req) {
         return auth;
     }
     const conn = await db.getConnection();
-    let filePath = null;
+    let uploadedBlobUrl = null;
     let fileName = null;
     try {
 
@@ -388,7 +428,7 @@ export async function PUT(req) {
            AMBIL DATA USER
         ====================== */
         const [[user]] = await conn.query(
-            "SELECT username FROM akun WHERE id_akun=?",
+            "SELECT folder_name FROM hima WHERE id_akun=?",
             [id_akun]
         );
 
@@ -444,53 +484,44 @@ export async function PUT(req) {
             );
         const oldFoto = member.foto;
         fileName = oldFoto;
-        /* folder upload */
-        const uploadDir = path.join(
-            process.cwd(),
-            "public/uploads/member",
-            user.username
-        );
+
         if (file && file.size > 0) {            
             
             /* ======================
             JIKA FOTO DIUPDATE
             ====================== */
-            if (file && file.size > 0) {
+            const MAX_SIZE = 5 * 1024 * 1024;
 
-                const MAX_SIZE = 5 * 1024 * 1024;
+            if (file.size > MAX_SIZE)
+                return NextResponse.json(
+                    { message: "Ukuran maksimal 5MB" },
+                    { status: 400 }
+                );
 
-                if (file.size > MAX_SIZE)
-                    return NextResponse.json(
-                        { message: "Ukuran maksimal 5MB" },
-                        { status: 400 }
-                    );
+            const allowedTypes = [
+                "image/jpeg",
+                "image/png",
+                "image/webp",
+                "image/jpg"
+            ];
 
-                const allowedTypes = [
-                    "image/jpeg",
-                    "image/png",
-                    "image/webp",
-                    "image/jpg"
-                ];
+            if (!allowedTypes.includes(file.type))
+                return NextResponse.json(
+                    { message: "Format file harus JPG, PNG, atau WEBP" },
+                    { status: 400 }
+                );
 
-                if (!allowedTypes.includes(file.type))
-                    return NextResponse.json(
-                        { message: "Format file harus JPG, PNG, atau WEBP" },
-                        { status: 400 }
-                    );
-                
+            /* upload foto baru ke Vercel Blob */
+            const blob = await put(
+                `member/${user.folder_name}/${Date.now()}-${file.name}`,
+                file,
+                {
+                    access: "public",
+                }
+            );
 
-                if (!fs.existsSync(uploadDir)) {
-                    fs.mkdirSync(uploadDir, { recursive: true });
-                }            
-
-                /* simpan foto baru */
-                const bytes = await file.arrayBuffer();
-                const buffer = Buffer.from(bytes);
-
-                fileName = `${Date.now()}-${file.name}`;
-                filePath = path.join(uploadDir, fileName);
-                fs.writeFileSync(filePath, buffer);
-            }
+            uploadedBlobUrl = blob.url;
+            fileName = blob.url;
         }
         
 
@@ -511,11 +542,11 @@ export async function PUT(req) {
             file.size > 0 &&
             oldFoto
         ) {
-            const oldPath = path.join(uploadDir, oldFoto);
-        
-            if (fs.existsSync(oldPath)) {
-                fs.unlinkSync(oldPath);
-            }
+                try {
+                    await del(oldFoto);
+                } catch (deleteError) {
+                    console.error("Gagal menghapus foto lama dari blob:", deleteError);
+                }
         }
 
         return NextResponse.json({
@@ -523,11 +554,31 @@ export async function PUT(req) {
         });
 
     } catch (error) {
-        
+        console.error("[ERROR] PUT /api/admin/member:", error);
         await conn.rollback();
-        // 🔥 HAPUS FILE JIKA SUDAH TERSIMPAN
-        if (filePath && fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
+        // 🔥 HAPUS BLOB JIKA SUDAH TERSIMPAN
+        if (uploadedBlobUrl) {
+            try {
+                await del(uploadedBlobUrl);
+            } catch (deleteError) {
+                console.error("Gagal menghapus foto baru dari blob:", deleteError);
+            }
+        }
+        //  Cek apakah error terkait jaringan/koneksi database
+        const isConnectionError = 
+            error.code === 'ETIMEDOUT' || 
+            error.code === 'PROTOCOL_SEQUENCE_TIMEOUT' ||
+            error.code === 'ECONNRESET' ||  
+            error.code === 'ECONNREFUSED' || 
+            error.name === 'TimeoutError';
+
+        if (isConnectionError) {
+            return NextResponse.json(
+                { 
+                    message: "Gangguan koneksi Gagal Mengubah data anggota. Silakan coba beberapa saat lagi.",
+                },
+                { status: 503 } // 503 Service Unavailable atau 504 Gateway Timeout lebih cocok
+            );
         }
         return NextResponse.json(
             { message: "Internal server error" },

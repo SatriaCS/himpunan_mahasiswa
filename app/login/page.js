@@ -31,7 +31,7 @@ export default function LoginPage() {
                 window.location.href = "/admin";
             }
         }else{
-            alert(data.message);
+            alert(data.message || `Gangguan. Silakan coba beberapa saat lagi.`);
         }
         setIsLoading(false);
     };

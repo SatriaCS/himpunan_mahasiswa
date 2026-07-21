@@ -57,6 +57,23 @@ export async function GET(req, { params }) {
         return NextResponse.json(hima);
 
     } catch (error) {
+        console.error("[ERROR] GET /api/hima/[slug]:", error);
+        //  Cek apakah error terkait jaringan/koneksi database
+        const isConnectionError = 
+            error.code === 'ETIMEDOUT' || 
+            error.code === 'PROTOCOL_SEQUENCE_TIMEOUT' ||
+            error.code === 'ECONNRESET' ||  
+            error.code === 'ECONNREFUSED' || 
+            error.name === 'TimeoutError';
+
+        if (isConnectionError) {
+            return NextResponse.json(
+                { 
+                    message: "Ganguan koneksi Gagal Memuat data. Silakan coba beberapa saat lagi.",
+                },
+                { status: 503 } // 503 Service Unavailable atau 504 Gateway Timeout lebih cocok
+            );
+        }
 
         return NextResponse.json(
             { message: "Internal server  error" },

@@ -66,6 +66,23 @@ export async function POST(req) {
 
         return res;
     } catch (error) {
+        console.error("[ERROR] POST /api/login:", error);
+        //  Cek apakah error terkait jaringan/koneksi database
+        const isConnectionError = 
+            error.code === 'ETIMEDOUT' || 
+            error.code === 'PROTOCOL_SEQUENCE_TIMEOUT' ||
+            error.code === 'ECONNRESET' ||  
+            error.code === 'ECONNREFUSED' || 
+            error.name === 'TimeoutError';
+
+        if (isConnectionError) {
+            return NextResponse.json(
+                { 
+                    message: "Ganguan koneksi. Silakan coba beberapa saat lagi.",
+                },
+                { status: 503 } // 503 Service Unavailable atau 504 Gateway Timeout lebih cocok
+            );
+        }
         return Response.json({message: "internal server error"},{status: 500})
     }
     

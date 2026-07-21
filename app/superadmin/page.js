@@ -8,11 +8,22 @@ export default function SuperAdminDashboard() {
     const [loadingData, setLoadingData] = useState(true);
 
     async function fetchData(){
-        setLoadingData(true);
-        const res = await fetch("/api/super-admin/dashboard");
-        const data = await res.json();   
-        setAdmins(data.total_data);
-        setLoadingData(false);
+        try{
+            setLoadingData(true);
+            const res = await fetch("/api/super-admin/dashboard");
+            if (!res.ok) {
+                // Ambil pesan error dari backend
+                const errorData = await res.json(); 
+                // Lempar error agar masuk ke blok catch
+                throw new Error(errorData.message || `Gangguan. Silakan coba beberapa saat lagi.`);
+            }
+            const data = await res.json();   
+            setAdmins(data.total_data);
+        } catch (err) {
+            alert(err.message)
+        } finally {
+            setLoadingData(false);
+        }
     }
 
     useEffect(() => {fetchData()},[])

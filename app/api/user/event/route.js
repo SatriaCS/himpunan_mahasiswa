@@ -26,7 +26,7 @@ export async function GET(req) {
             LEFT JOIN hima h ON k.id_hima = h.id_hima
             ORDER BY k.tanggal ASC
             LIMIT ? OFFSET ?
-        `,[limit, offset]);
+        `, [limit, offset]);
         /* ======================
             TOTAL DATA
         ====================== */
@@ -34,8 +34,6 @@ export async function GET(req) {
             SELECT COUNT(*) AS total
             FROM kegiatan k
             LEFT JOIN hima h ON k.id_hima = h.id_hima
-            LEFT JOIN akun a ON h.id_akun = a.id_akun
-            WHERE k.tanggal >= CURDATE()
             ORDER BY k.tanggal ASC
         `);
 
@@ -48,9 +46,25 @@ export async function GET(req) {
         });
 
     } catch (error) {
-        
+        console.error("[ERROR] GET /api/kegiatan:", error);
+        //  Cek apakah error terkait jaringan/koneksi database
+        const isConnectionError = 
+            error.code === 'ETIMEDOUT' || 
+            error.code === 'PROTOCOL_SEQUENCE_TIMEOUT' ||
+            error.code === 'ECONNRESET' ||  
+            error.code === 'ECONNREFUSED' || 
+            error.name === 'TimeoutError';
+
+        if (isConnectionError) {
+            return NextResponse.json(
+                { 
+                    message: "Gangguan koneksi Gagal Memuat data kegiatan. Silakan coba beberapa saat lagi.",
+                },
+                { status: 503 } // 503 Service Unavailable atau 504 Gateway Timeout lebih cocok
+            );
+        }
         return NextResponse.json(
-            { message: "Internal server  error" },
+            { message: "Internal server error" },
             { status: 500 }
         );
     }

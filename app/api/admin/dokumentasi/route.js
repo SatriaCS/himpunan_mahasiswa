@@ -4,6 +4,7 @@ import db from "@/lib/db";
 import fs from "fs";
 import path from "path";
 import { verifyAdmin } from "@/lib/auth";
+import { put, del } from "@vercel/blob";
 
 export async function GET(req) {
     const auth = verifyAdmin(req);
@@ -68,7 +69,23 @@ export async function GET(req) {
         });
 
     } catch (error) {
-        
+        console.error("[ERROR] GET /api/admin/dokumentasi:", error);
+        //  Cek apakah error terkait jaringan/koneksi database
+        const isConnectionError = 
+            error.code === 'ETIMEDOUT' || 
+            error.code === 'PROTOCOL_SEQUENCE_TIMEOUT' ||
+            error.code === 'ECONNRESET' ||  
+            error.code === 'ECONNREFUSED' || 
+            error.name === 'TimeoutError';
+
+        if (isConnectionError) {
+            return NextResponse.json(
+                { 
+                    message: "Gangguan koneksi Gagal Memuat data dokumentasi. Silakan coba beberapa saat lagi.",
+                },
+                { status: 503 } // 503 Service Unavailable atau 504 Gateway Timeout lebih cocok
+            );
+        }
         return NextResponse.json(
             { message: "Internal Server Error" },
             { status: 500 }
@@ -85,7 +102,7 @@ export async function POST(req) {
     }
 
     const conn = await db.getConnection();
-    let filePath = null;
+    let uploadedBlobUrl = null;
     try {
 
         const token = req.cookies.get("token")?.value;
@@ -104,10 +121,10 @@ export async function POST(req) {
         const id_akun = decoded.id;
 
         /* ======================
-           AMBIL USER + HIMA
+           AMBIL HIMA
         ====================== */
         const [[user]] = await conn.query(
-            "SELECT username FROM akun WHERE id_akun=?",
+            "SELECT folder_name FROM hima WHERE id_akun=?",
             [id_akun]
         );
         if (!user)
@@ -170,28 +187,22 @@ export async function POST(req) {
         }
 
         /* ======================
-           BUAT FOLDER
+           UPLOAD FOTO TO BLOB
         ====================== */
-        const uploadDir = path.join(
-            process.cwd(),
-            "public/uploads/dokumentasi",
-            user.username
-        );
+        let fileName = null;
 
-        if (!fs.existsSync(uploadDir)) {
-            fs.mkdirSync(uploadDir, { recursive: true });
+        if (file && file.size > 0) {
+            const blob = await put(
+                `dokumentasi/${user.folder_name}/${Date.now()}-${file.name}`,
+                file,
+                {
+                    access: "public",
+                }
+            );
+
+            uploadedBlobUrl = blob.url;
+            fileName = blob.url;
         }
-
-        /* ======================
-           SIMPAN FILE
-        ====================== */
-        const bytes = await file.arrayBuffer();
-        const buffer = Buffer.from(bytes);
-
-        const fileName = `${Date.now()}-${file.name}`;
-
-        filePath = path.join(uploadDir, fileName);
-        fs.writeFileSync(filePath, buffer);
 
         await conn.beginTransaction();
         /* ======================
@@ -200,7 +211,7 @@ export async function POST(req) {
         const [result] = await conn.query(
             `INSERT INTO dokumentasi (id_hima, judul, foto)
              VALUES (?, ?, ?)`,
-            [hima.id_hima, judul, fileName]
+             [hima.id_hima, judul, fileName]
         );
         if (result.affectedRows === 0 ) {
                 throw new Error();
@@ -211,10 +222,31 @@ export async function POST(req) {
         });
 
     } catch (error) {
+        console.error("[ERROR] POST /api/admin/dokumentasi:", error);
         await conn.rollback();
-        // 🔥 HAPUS FILE JIKA SUDAH TERSIMPAN
-        if (filePath && fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
+        // 🔥 HAPUS BLOB JIKA SUDAH TERSIMPAN
+        if (uploadedBlobUrl) {
+            try {
+                await del(uploadedBlobUrl);
+            } catch (deleteError) {
+                console.error("Gagal menghapus foto baru dari blob:", deleteError);
+            }
+        }
+        //  Cek apakah error terkait jaringan/koneksi database
+        const isConnectionError = 
+            error.code === 'ETIMEDOUT' || 
+            error.code === 'PROTOCOL_SEQUENCE_TIMEOUT' ||
+            error.code === 'ECONNRESET' ||  
+            error.code === 'ECONNREFUSED' || 
+            error.name === 'TimeoutError';
+
+        if (isConnectionError) {
+            return NextResponse.json(
+                { 
+                    message: "Gangguan koneksi Gagal Menambah data dokumentasi. Silakan coba beberapa saat lagi.",
+                },
+                { status: 503 } // 503 Service Unavailable atau 504 Gateway Timeout lebih cocok
+            );
         }
         return NextResponse.json(
             { message: "Internal Server Error" },
@@ -271,7 +303,7 @@ export async function DELETE(req) {
            AMBIL USERNAME
         ====================== */
         const [[user]] = await conn.query(
-            "SELECT username FROM akun WHERE id_akun=?",
+            "SELECT folder_name FROM hima WHERE id_akun=?",
             [id_akun]
         );
         
@@ -312,25 +344,38 @@ export async function DELETE(req) {
         await conn.commit();
         
         /* ======================
-           HAPUS FILE FISIK
+           HAPUS FILE FISIK / BLOB
         ====================== */
-        const filePath = path.join(
-            process.cwd(),
-            "public/uploads/dokumentasi",
-            user.username,
-            doc.foto
-        );
-
-        if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
+        if (doc.foto) {
+                try {
+                    await del(doc.foto);
+                } catch (deleteError) {
+                    console.error("Gagal menghapus foto dokumentasi dari blob:", deleteError);
+                }
         }
         return NextResponse.json({
             message: "Dokumentasi berhasil dihapus"
         });
 
     } catch (error) {
+        console.error("[ERROR] DELETE /api/admin/dokumentasi:", error);
         await conn.rollback();
+        //  Cek apakah error terkait jaringan/koneksi database
+        const isConnectionError = 
+            error.code === 'ETIMEDOUT' || 
+            error.code === 'PROTOCOL_SEQUENCE_TIMEOUT' ||
+            error.code === 'ECONNRESET' ||  
+            error.code === 'ECONNREFUSED' || 
+            error.name === 'TimeoutError';
 
+        if (isConnectionError) {
+            return NextResponse.json(
+                { 
+                    message: "Gangguan koneksi Gagal Menghapus data dokumentasi. Silakan coba beberapa saat lagi.",
+                },
+                { status: 503 } // 503 Service Unavailable atau 504 Gateway Timeout lebih cocok
+            );
+        }
         return NextResponse.json(
             { message: "Terjadi kesalahan server" },
             { status: 500 }

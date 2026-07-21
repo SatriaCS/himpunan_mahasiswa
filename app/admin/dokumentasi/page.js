@@ -31,7 +31,7 @@ export default function DokumentasiPage() {
 
     const [photos, setPhotos] = useState([]);
 
-    const [imagePreview, setImagePreview] = useState(null);    
+    const [imagePreview, setImagePreview] = useState(null);
     // pagination
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
@@ -40,23 +40,34 @@ export default function DokumentasiPage() {
     const [loadingData, setLoadingData] = useState(true);
 
     const fetchDokumentasi = async (currentPage = 1) => {
-        setLoadingData(true);
+        try{
+            setLoadingData(true);
 
-        const res = await fetch(`/api/admin/dokumentasi?page=${currentPage}&limit=${limit}`,
-            {
-                cache: "no-store"
+            const res = await fetch(`/api/admin/dokumentasi?page=${currentPage}&limit=${limit}`,
+                {
+                    cache: "no-store"
+                }
+            );
+            if (!res.ok) {
+                // Ambil pesan error dari backend
+                const errorData = await res.json(); 
+                // Lempar error agar masuk ke blok catch
+                throw new Error(errorData.message || `Gangguan. Silakan coba beberapa saat lagi.`);
             }
-        );
-        const result = await res.json();
-        
-        setPhotos(result.data);
-        setTotalPages(result.totalPages);
-        // AUTO FIX PAGE
-        if (currentPage > result.totalPages && result.totalPages > 0) {
-            setCurrentPage(result.totalPages);
-        }
+            const result = await res.json();
 
-        setLoadingData(false);
+            setPhotos(result.data);
+            setTotalPages(result.totalPages);
+            // AUTO FIX PAGE
+            if (currentPage > result.totalPages && result.totalPages > 0) {
+                setCurrentPage(result.totalPages);
+            }
+
+        } catch (err) {
+            alert(err.message)
+        } finally {
+            setLoadingData(false);
+        }
     };
 
     useEffect(() => {
@@ -93,8 +104,10 @@ export default function DokumentasiPage() {
             const result = await res.json();
 
             if (!res.ok) {
-                showError(result.message);
-                return;
+                    // Ambil pesan error dari backend
+                    const errorData = await res.json(); 
+                    // Lempar error agar masuk ke blok catch
+                    throw new Error(errorData.message || `Gangguan. Silakan coba beberapa saat lagi.`);
             }
 
             setIsModalOpen(false);
@@ -142,15 +155,17 @@ export default function DokumentasiPage() {
             const result = await res.json();
 
             if (!res.ok) {
-                showError(result.message);
-                return;
+                    // Ambil pesan error dari backend
+                    const errorData = await res.json(); 
+                    // Lempar error agar masuk ke blok catch
+                    throw new Error(errorData.message || `Gangguan. Silakan coba beberapa saat lagi.`);
             }
 
             /* tambah ke gallery */
             const newPhoto = {
                 id: Date.now(),
                 judul: formData.judul,
-                foto: result.foto 
+                foto: result.foto
             };
 
             setPhotos(prev => [newPhoto, ...prev]);
@@ -162,7 +177,7 @@ export default function DokumentasiPage() {
             fetchDokumentasi(currentPage);
 
         } catch (error) {
-            showError("Upload gagal");
+            showError(error.message);
             fetchDokumentasi(currentPage);
         } finally {
             setLoading(false);
@@ -186,53 +201,56 @@ export default function DokumentasiPage() {
 
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
                 {loadingData ? (
-                                <div className="flex justify-center items-center gap-2">
-                                    <div className="w-6 h-6 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-                                    <span className="text-gray-500">Memuat data...</span>
-                                </div>
-                            ) : photos.length === 0 ? (
-                                <div className="text-center py-10 text-gray-400">Belum ada foto dokumentasi</div>
-                            ) : (
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    {/* New Upload Placeholder */}
-                                    <div
-                                        onClick={handleUploadClick}
-                                        className="aspect-square border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:border-blue-500 hover:text-blue-500 transition-colors cursor-pointer bg-gray-50"
+                    <div className="flex justify-center items-center gap-2">
+                        <div className="w-6 h-6 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                        <span className="text-gray-500">Memuat data...</span>
+                    </div>
+                ) : photos.length === 0 ? (
+                    <div className="text-center py-10 text-gray-400">Belum ada foto dokumentasi</div>
+                ) : (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {/* New Upload Placeholder */}
+                        <div
+                            onClick={handleUploadClick}
+                            className="aspect-square border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:border-blue-500 hover:text-blue-500 transition-colors cursor-pointer bg-gray-50"
+                        >
+                            <span className="text-2xl mb-1">+</span>
+                            <span className="text-xs font-medium">Upload Baru</span>
+                        </div>
+
+                        {photos.map((photo) => (
+                            <div key={photo.id} className="group relative aspect-square bg-gray-100 rounded-xl overflow-hidden border border-gray-200">
+                                <img
+                                    src={photo.foto}
+                                    alt={photo.judul}
+                                    className="w-full h-full object-cover"
+                                />
+
+                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                    <button
+                                        onClick={() => handleView(photo)}
+                                        className="p-2 bg-white/20 text-white rounded-lg hover:bg-white/40 backdrop-blur-sm"
+                                        title="Lihat"
                                     >
-                                        <span className="text-2xl mb-1">+</span>
-                                        <span className="text-xs font-medium">Upload Baru</span>
-                                    </div>
-
-                                    {photos.map((photo) => (
-                                        <div key={photo.id} className="group relative aspect-square bg-gray-100 rounded-xl overflow-hidden border border-gray-200">
-                                            {/* Use simple img tag for demo or next/image */}
-                                            <img src={`/uploads/dokumentasi/${photo.username}/${photo.foto}`} alt={photo.judul} className="w-full h-full object-cover" />
-
-                                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                                <button
-                                                    onClick={() => handleView(photo)}
-                                                    className="p-2 bg-white/20 text-white rounded-lg hover:bg-white/40 backdrop-blur-sm"
-                                                    title="Lihat"
-                                                >
-                                                    🔍
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDelete(photo)}
-                                                    className="p-2 bg-red-500/80 text-white rounded-lg hover:bg-red-600 backdrop-blur-sm"
-                                                    title="Hapus"
-                                                >
-                                                    🗑️
-                                                </button>
-                                            </div>
-                                            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3 text-white">
-                                                <p className="text-xs font-medium truncate">{photo.judul}</p>
-                                            </div>
-                                        </div>
-                                    ))}
+                                        🔍
+                                    </button>
+                                    <button
+                                        onClick={() => handleDelete(photo)}
+                                        className="p-2 bg-red-500/80 text-white rounded-lg hover:bg-red-600 backdrop-blur-sm"
+                                        title="Hapus"
+                                    >
+                                        🗑️
+                                    </button>
                                 </div>
-                            )
+                                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3 text-white">
+                                    <p className="text-xs font-medium truncate">{photo.judul}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )
                 }
-                {photos.length > 0 && 
+                {photos.length > 0 &&
                     <Pagination
                         currentPage={currentPage}
                         totalPages={totalPages}
@@ -306,7 +324,11 @@ export default function DokumentasiPage() {
                 {modalMode === "view" && selectedPhoto && (
                     <div className="text-center">
                         <div className="rounded-xl overflow-hidden mb-4 border border-gray-200">
-                            <img src={`/uploads/dokumentasi/${selectedPhoto.username}/${selectedPhoto.foto}`} alt={selectedPhoto.judul} className="w-full h-auto object-cover" />
+                            <img
+                                src={selectedPhoto.foto}
+                                alt={selectedPhoto.judul}
+                                className="w-full h-auto object-cover"
+                            />
                         </div>
                         <h4 className="text-xl font-bold text-gray-900 mb-6">{selectedPhoto.judul}</h4>
                         <button
@@ -339,7 +361,7 @@ export default function DokumentasiPage() {
                                 disabled={loading}
                                 className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold shadow-lg shadow-red-200 transition-all"
                             >
-                                {loading ? "Loading..." : "Hapus"}                                
+                                {loading ? "Loading..." : "Hapus"}
                             </button>
                         </div>
                     </div>
@@ -399,7 +421,7 @@ export default function DokumentasiPage() {
                         Tutup
                     </button>
                 </div>
-            </Modal>            
+            </Modal>
         </div>
     );
 }

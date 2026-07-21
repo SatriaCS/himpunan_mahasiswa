@@ -43,24 +43,36 @@ export default function AdminManagementPage() {
     };
 
     async function fetchData(currentPage = 1) {
-        setLoadingData(true);
+        try{
+            setLoadingData(true);
 
-        const res = await fetch(
-            `/api/super-admin/akun-admin?page=${currentPage}&limit=${limit}`,
-            {
-                cache: "no-store"
+            const res = await fetch(
+                `/api/super-admin/akun-admin?page=${currentPage}&limit=${limit}`,
+                {
+                    cache: "no-store"
+                }
+            );
+            
+            if (!res.ok) {
+                // Ambil pesan error dari backend
+                const errorData = await res.json(); 
+                // Lempar error agar masuk ke blok catch
+                throw new Error(errorData.message || `Gangguan. Silakan coba beberapa saat lagi.`);
             }
-        );
 
-        const result = await res.json();
-        setAdmins(result.data);
-        setTotalPages(result.totalPages);
-        // AUTO FIX PAGE
-        if (currentPage > result.totalPages && result.totalPages > 0) {
-            setCurrentPage(result.totalPages);
+            const result = await res.json();
+            setAdmins(result.data);
+            setTotalPages(result.totalPages);
+            // AUTO FIX PAGE
+            if (currentPage > result.totalPages && result.totalPages > 0) {
+                setCurrentPage(result.totalPages);
+            }
+
+        } catch (err) {
+            alert(err.message)
+        } finally {
+            setLoadingData(false);
         }
-
-        setLoadingData(false);
     }
 
     useEffect(() => {fetchData(currentPage)},[currentPage])

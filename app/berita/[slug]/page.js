@@ -9,8 +9,8 @@ export default function DetailBerita({ params }) {
     const [newsItem, setNewsItem] = useState(null)
     // loading
     const [loading, setLoading] = useState(true);
-    const [username,setUsername] = useState("");
-    
+    const [username, setUsername] = useState("");
+
 
     function DetailSkeleton() {
         return (
@@ -54,17 +54,25 @@ export default function DetailBerita({ params }) {
             setLoading(true);
 
             const res = await fetch(`/api/user/news/${slug}?view=${countView}`);
+
+            if (!res.ok) {
+                    // Ambil pesan error dari backend
+                    const errorData = await res.json(); 
+                    // Lempar error agar masuk ke blok catch
+                    throw new Error(errorData.message || `Gangguan. Silakan coba beberapa saat lagi.`);
+            }
+            
             const result = await res.json();
 
             setNewsItem(result.data);
             setUsername(result.username);
         } catch (err) {
-            console.log(err);
+            alert(err.message);
         } finally {
             setLoading(false);
         }
     };
-    
+
     const fetched = useRef(false);
 
     useEffect(() => {
@@ -99,7 +107,7 @@ export default function DetailBerita({ params }) {
             <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
                 {/* Header Section */}
                 <div className="text-center mb-10">
-                    
+
                     <h1 className="text-3xl md:text-5xl font-extrabold text-gray-900 leading-tight mb-6">
                         {newsItem.judul}
                     </h1>
@@ -109,44 +117,32 @@ export default function DetailBerita({ params }) {
                         </span> */}
                         <span className="flex items-center gap-2">
                             📅 {
-                                    newsItem.updated_at
-                                        ? `Updated : ${new Date(newsItem.updated_at).toLocaleDateString("id-ID", {
+                                newsItem.updated_at
+                                    ? `Updated : ${new Date(newsItem.updated_at).toLocaleDateString("id-ID", {
                                         day: "numeric",
                                         month: "long",
                                         year: "numeric"
-                                        })}`
-                                        : new Date(newsItem.created_at).toLocaleDateString("id-ID", {
+                                    })}`
+                                    : new Date(newsItem.created_at).toLocaleDateString("id-ID", {
                                         day: "numeric",
                                         month: "long",
                                         year: "numeric"
-                                        })
-                                }
+                                    })
+                            }
                         </span>
                     </div>
                 </div>
 
                 {/* Hero Image */}
                 <div className="relative w-md mx-auto mb-12 rounded-3xl overflow-hidden shadow-2xl flex justify-center items-center">
-                    {newsItem.username ? 
-                        <Image
-                            src={`/uploads/news/${newsItem.username}/${newsItem.thumbnail}`}
-                            alt={newsItem.judul}
-                            width={1200}
-                            height={800}
-                            className="w-full h-auto object-cover"
-                            priority
-                        />
-                    : 
-                        <Image
-                            src={`/uploads/news/${username}/${newsItem.thumbnail}`}
-                            alt={newsItem.judul}
-                            width={1200}
-                            height={800}
-                            className="w-full h-auto object-cover"
-                            priority
-                        />
-                    }
-                    
+                    <Image
+                        src={newsItem.thumbnail}
+                        alt={newsItem.judul}
+                        width={1200}
+                        height={800}
+                        className="w-full h-auto object-cover"
+                        priority
+                    />
                 </div>
 
                 {/* Content */}

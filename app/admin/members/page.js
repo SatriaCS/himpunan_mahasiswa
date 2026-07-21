@@ -26,7 +26,7 @@ export default function MembersPage() {
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState("add"); // 'add', 'edit', 'delete'
-    const [formData, setFormData] = useState({ nama: "",  jabatan: "", foto:null });
+    const [formData, setFormData] = useState({ nama: "", jabatan: "", foto: null });
     const [successData, setSuccessData] = useState(null);
     const [memberToDelete, setMemberToDelete] = useState(null);
     const [editingId, setEditingId] = useState(null);
@@ -41,24 +41,37 @@ export default function MembersPage() {
     const [loadingData, setLoadingData] = useState(true);
 
     const fetchMembers = async (currentPage = 1) => {
-        setLoadingData(true)
+        try{
+            setLoadingData(true)
 
-        const res = await fetch(`/api/admin/member?page=${currentPage}&limit=${limit}`,
-            {
-                cache: "no-store"
+            const res = await fetch(`/api/admin/member?page=${currentPage}&limit=${limit}`,
+                {
+                    cache: "no-store"
+                }
+            );
+
+            if (!res.ok) {
+                // Ambil pesan error dari backend
+                const errorData = await res.json(); 
+                // Lempar error agar masuk ke blok catch
+                throw new Error(errorData.message || `Gangguan. Silakan coba beberapa saat lagi.`);
             }
-        );
-        const result = await res.json();
-        
-        setMembersList(result.data);
-        setTotalPages(result.totalPages);
 
-        // AUTO FIX PAGE
-        if (currentPage > result.totalPages && result.totalPages > 0) {
-            setCurrentPage(result.totalPages);
+            const result = await res.json();
+
+            setMembersList(result.data);
+            setTotalPages(result.totalPages);
+
+            // AUTO FIX PAGE
+            if (currentPage > result.totalPages && result.totalPages > 0) {
+                setCurrentPage(result.totalPages);
+            }
+
+        } catch (err) {
+            alert(err.message)
+        } finally {
+            setLoadingData(false);
         }
-
-        setLoadingData(false)
     };
 
     useEffect(() => {
@@ -77,10 +90,8 @@ export default function MembersPage() {
         setEditingId(member.id);
         setFormData({ nama: member.nama, jabatan: member.jabatan, foto: null });
         if (member.foto) {
-            setImagePreview(
-                `/uploads/member/${member.username}/${member.foto}`
-            );
-        }        
+            setImagePreview(member.foto);
+        }
         setIsModalOpen(true);
     };
 
@@ -90,7 +101,7 @@ export default function MembersPage() {
         setIsModalOpen(true);
     };
 
-    const confirmDelete = async() => {
+    const confirmDelete = async () => {
         try {
             setLoading(true)
             const res = await fetch(
@@ -101,22 +112,24 @@ export default function MembersPage() {
             const result = await res.json();
 
             if (!res.ok) {
-                showError(result.message);
-                return;
+                // Ambil pesan error dari backend
+                const errorData = await res.json(); 
+                // Lempar error agar masuk ke blok catch
+                throw new Error(errorData.message || `Gangguan. Silakan coba beberapa saat lagi.`);
             }
 
             setIsModalOpen(false);
             showSuccess(result.message);
             setLoading(false)
         } catch (error) {
-            showError(error.message);            
-        }finally {
+            showError(error.message);
+        } finally {
             fetchMembers(currentPage);
             setLoading(false);
         }
     };
 
-    const handleSubmit = async(e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
 
         try {
@@ -136,8 +149,10 @@ export default function MembersPage() {
             const result = await res.json();
 
             if (!res.ok) {
-                showError(result.message);
-                return;
+                // Ambil pesan error dari backend
+                const errorData = await res.json(); 
+                // Lempar error agar masuk ke blok catch
+                throw new Error(errorData.message || `Gangguan. Silakan coba beberapa saat lagi.`);
             }
 
             showSuccess(result.message);
@@ -153,7 +168,7 @@ export default function MembersPage() {
         }
     };
 
-    const handleSubmitEdit = async(e) => {
+    const handleSubmitEdit = async (e) => {
         e.preventDefault();
 
         try {
@@ -174,8 +189,10 @@ export default function MembersPage() {
             const result = await res.json();
 
             if (!res.ok) {
-                showError(result.message);
-                return;
+                // Ambil pesan error dari backend
+                const errorData = await res.json(); 
+                // Lempar error agar masuk ke blok catch
+                throw new Error(errorData.message || `Gangguan. Silakan coba beberapa saat lagi.`);
             }
 
             showSuccess(result.message);
@@ -219,67 +236,67 @@ export default function MembersPage() {
                         </thead>
                         <tbody className="divide-y divide-gray-50">
                             {loadingData ? (
-                                    <tr>
-                                        <td colSpan="4" className="text-center py-10">
-                                            <div className="flex justify-center items-center gap-2">
-                                                <div className="w-6 h-6 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-                                                <span className="text-gray-500">Memuat data...</span>
+                                <tr>
+                                    <td colSpan="4" className="text-center py-10">
+                                        <div className="flex justify-center items-center gap-2">
+                                            <div className="w-6 h-6 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                                            <span className="text-gray-500">Memuat data...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ) : membersList.length === 0 ? (
+                                <tr>
+                                    <td colSpan="4" className="text-center py-10 text-gray-500">
+                                        Data belum tersedia
+                                    </td>
+                                </tr>
+                            ) : (
+                                membersList.map((member, index) => (
+                                    <tr key={member.id} className="hover:bg-gray-50 transition-colors">
+                                        <td className="p-6 font-semibold text-gray-500">
+                                            {(currentPage - 1) * limit + index + 1}
+                                        </td>
+                                        <td className="p-6">
+                                            <div className="flex items-center gap-3">
+                                                {member.foto ? (
+                                                    <img
+                                                        src={member.foto}
+                                                        alt={member.nama}
+                                                        className="h-10 w-10 rounded-full object-cover"
+                                                    />
+                                                ) : (
+                                                    <span className="text-gray-400 text-2xl">👤</span>
+                                                )}
+                                                <div>
+                                                    <p className="font-bold text-gray-900">{member.nama}</p>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="p-6 text-gray-600">{member.jabatan}</td>
+                                        <td className="p-6 text-right">
+                                            <div className="flex gap-2 justify-end">
+                                                <button
+                                                    onClick={() => handleEdit(member)}
+                                                    className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+                                                >
+                                                    ✏️
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDelete(member)}
+                                                    className="text-red-600 hover:text-red-800 font-medium text-sm ml-4"
+                                                >
+                                                    🗑️
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
-                                ) : membersList.length === 0 ? (
-                                    <tr>
-                                        <td colSpan="4" className="text-center py-10 text-gray-500">
-                                            Data belum tersedia
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    membersList.map((member, index) => (
-                                        <tr key={member.id} className="hover:bg-gray-50 transition-colors">
-                                            <td className="p-6 font-semibold text-gray-500">
-                                                {(currentPage - 1) * limit + index + 1}
-                                            </td>
-                                            <td className="p-6">
-                                                <div className="flex items-center gap-3">
-                                                    {member.foto ? (
-                                                        <img
-                                                            src={`/uploads/member/${member.username}/${member.foto}`}
-                                                            alt={member.nama}
-                                                            className="h-10 w-10 rounded-full object-cover"
-                                                        />
-                                                    ) : (
-                                                        <span className="text-gray-400 text-2xl">👤</span>
-                                                    )}
-                                                    <div>
-                                                        <p className="font-bold text-gray-900">{member.nama}</p>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="p-6 text-gray-600">{member.jabatan}</td>
-                                            <td className="p-6 text-right">
-                                                <div className="flex gap-2 justify-end">
-                                                    <button
-                                                        onClick={() => handleEdit(member)}
-                                                        className="text-blue-600 hover:text-blue-800 font-medium text-sm"
-                                                    >
-                                                        ✏️
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleDelete(member)}
-                                                        className="text-red-600 hover:text-red-800 font-medium text-sm ml-4"
-                                                    >
-                                                        🗑️
-                                                    </button>
-                                                </div>                                                
-                                            </td>
-                                        </tr>
-                                    )
-                            ))}
+                                )
+                                ))}
                         </tbody>
                     </table>
                 </div>
-                
-                {membersList.length > 0 && 
+
+                {membersList.length > 0 &&
                     <Pagination
                         currentPage={currentPage}
                         totalPages={totalPages}
@@ -294,10 +311,10 @@ export default function MembersPage() {
                 onClose={() => setIsModalOpen(false)}
                 title={
                     modalMode === "delete"
-                            ? "Konfirmasi Hapus"
-                            : modalMode === "add"
-                                ? "Tambah Anggota Baru"
-                                : "Edit Data Anggota"
+                        ? "Konfirmasi Hapus"
+                        : modalMode === "add"
+                            ? "Tambah Anggota Baru"
+                            : "Edit Data Anggota"
                 }
             >
                 {modalMode === "delete" ? (
@@ -326,7 +343,7 @@ export default function MembersPage() {
                         </div>
                     </div>
                 ) : (
-                    <form onSubmit={modalMode === "add" ? handleSubmit : handleSubmitEdit } className="space-y-4">
+                    <form onSubmit={modalMode === "add" ? handleSubmit : handleSubmitEdit} className="space-y-4">
                         <div>
                             <label className="block text-sm font-bold text-gray-700 mb-1">Nama Lengkap</label>
                             <input
@@ -368,15 +385,15 @@ export default function MembersPage() {
                                         accept="image/*"
                                         className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-black text-sm file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-600 hover:file:bg-blue-100"
                                         onChange={(e) => {
-                                                            const file = e.target.files[0];
+                                            const file = e.target.files[0];
 
-                                                            if (file) {
-                                                                setFormData({ ...formData, foto: file });
+                                            if (file) {
+                                                setFormData({ ...formData, foto: file });
 
-                                                                const previewUrl = URL.createObjectURL(file);
-                                                                setImagePreview(previewUrl);
-                                                            }
-                                                        }}
+                                                const previewUrl = URL.createObjectURL(file);
+                                                setImagePreview(previewUrl);
+                                            }
+                                        }}
                                     />
                                 </div>
                             </div>
@@ -387,7 +404,7 @@ export default function MembersPage() {
                                 type="submit"
                                 className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg shadow-blue-200 transition-all transform active:scale-95"
                             >
-                                
+
                                 {loading ? "loading... " : modalMode === "add" ? "Simpan Anggota" : "Simpan Perubahan"}
                             </button>
                         </div>
@@ -448,7 +465,7 @@ export default function MembersPage() {
                         Tutup
                     </button>
                 </div>
-            </Modal>              
+            </Modal>
         </div>
     );
 }

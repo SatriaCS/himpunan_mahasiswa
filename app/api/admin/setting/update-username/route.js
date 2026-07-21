@@ -73,39 +73,6 @@ export async function PUT(req) {
             );
         }
 
-        const oldUsername = user.username;
-
-        /* ======================
-           FUNCTION RENAME FOLDER
-        ====================== */
-        const renameFolder = (baseFolder) => {
-
-            const oldPath = path.join(
-                process.cwd(),
-                baseFolder,
-                oldUsername
-            );
-
-            const newPath = path.join(
-                process.cwd(),
-                baseFolder,
-                username
-            );
-
-            if (fs.existsSync(oldPath)) {
-                fs.renameSync(oldPath, newPath);
-            }
-        };
-
-        /* ======================
-           RENAME SEMUA FOLDER
-        ====================== */
-        renameFolder("public/uploads/hima");
-        renameFolder("public/uploads/dokumentasi");
-        renameFolder("public/uploads/member");
-        renameFolder("public/uploads/news");
-        renameFolder("public/uploads/event");
-
         await conn.beginTransaction();
         
         /* ======================
@@ -125,9 +92,25 @@ export async function PUT(req) {
         });
 
     } catch (error) {
-
+        console.error("[ERROR] PUT /api/admin/setting/update-username:", error);
+        //  Cek apakah error terkait jaringan/koneksi database
+        const isConnectionError = 
+            error.code === 'ETIMEDOUT' || 
+            error.code === 'PROTOCOL_SEQUENCE_TIMEOUT' ||
+            error.code === 'ECONNRESET' ||  
+            error.code === 'ECONNREFUSED' || 
+            error.name === 'TimeoutError';
+        
+        if (isConnectionError) {
+            return NextResponse.json(
+                { 
+                    message: "Gangguan koneksi Gagal Mengubah username. Silakan coba beberapa saat lagi.",
+                },
+                { status: 503 } // 503 Service Unavailable atau 504 Gateway Timeout lebih cocok
+            );
+        }   
         await conn.rollback();
-
+        
         return NextResponse.json(
             { message: "Terjadi kesalahan server" },
             { status: 500 }

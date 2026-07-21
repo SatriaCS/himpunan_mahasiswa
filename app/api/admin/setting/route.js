@@ -4,6 +4,7 @@ import db from "@/lib/db";
 import fs from "fs";
 import path from "path";
 import { verifyAdmin } from "@/lib/auth";
+import { put, del } from "@vercel/blob";
 
 async function generateUniqueSlug(judul) {
 
@@ -89,7 +90,24 @@ export async function GET(req) {
 
         return NextResponse.json(rows);
 
-    } catch (error) {        
+    } catch (error) {    
+        console.error("[ERROR] GET /api/admin/setting:", error);
+        //  Cek apakah error terkait jaringan/koneksi database
+        const isConnectionError = 
+            error.code === 'ETIMEDOUT' || 
+            error.code === 'PROTOCOL_SEQUENCE_TIMEOUT' ||
+            error.code === 'ECONNRESET' ||  
+            error.code === 'ECONNREFUSED' || 
+            error.name === 'TimeoutError';
+        
+        if (isConnectionError) {
+            return NextResponse.json(
+                { 
+                    message: "Gangguan koneksi Gagal Memuat data. Silakan coba beberapa saat lagi.",
+                },
+                { status: 503 } // 503 Service Unavailable atau 504 Gateway Timeout lebih cocok
+            );
+        }    
         return NextResponse.json(
             { message: "Internal server error" },
             { status: 500 }
@@ -105,8 +123,8 @@ export async function PUT(req) {
         return auth;
     }
     const conn = await db.getConnection();
-    let filePathLogo = null;
-    let filePathThumbnail = null;
+    let uploadedBlobUrlLogo = null;
+    let uploadedBlobUrlThumbnail = null;
     try {
 
         /* ======================
@@ -129,10 +147,10 @@ export async function PUT(req) {
         const id_akun = decoded.id;
         
         /* ======================
-           AMBIL USER + HIMA
+           AMBIL HIMA
         ====================== */
         const [[user]] = await conn.query(
-            "SELECT username FROM akun WHERE id_akun=?",
+            "SELECT folder_name FROM hima WHERE id_akun=?",
             [id_akun]
         );
         if (!user) {
@@ -174,22 +192,13 @@ export async function PUT(req) {
         }
 
         /* ======================
-           UPDATE logo
+           UPLOAD LOGO
         ====================== */
-        const oldLogo =  hima.logo ?? "";
+        const oldLogo = hima.logo ?? "";
         let fileNameLogo = oldLogo;
-        const oldThumbnail =  hima.thumbnail ?? "";
+        const oldThumbnail = hima.thumbnail ?? "";
         let fileNameThumbnail = oldThumbnail;
-        /* ===== folder ===== */
-            const uploadDir = path.join(
-                process.cwd(),
-                "public/uploads/hima",
-                user.username
-            );
 
-        /* ======================
-           UPDATE logo
-        ====================== */
         if (fileLogo instanceof File && fileLogo.size > 0) {
 
             const MAX_SIZE = 5 * 1024 * 1024;
@@ -209,22 +218,18 @@ export async function PUT(req) {
                 throw new Error("Format Logo harus JPG, PNG, WEBP");
             }
 
-            if (!fs.existsSync(uploadDir)) {
-                fs.mkdirSync(uploadDir, { recursive: true });
-            }
-            
+            const blob = await put(
+                `hima/${user.folder_name}/logo-${Date.now()}-${fileLogo.name}`,
+                fileLogo,
+                { access: "public" }
+            );
 
-            /* ===== simpan file baru ===== */
-            const bytes = await fileLogo.arrayBuffer();
-            const buffer = Buffer.from(bytes);
-
-            fileNameLogo = `${Date.now()}-${fileLogo.name}`;
-            filePathLogo = path.join(uploadDir, fileNameLogo);
-            fs.writeFileSync(filePathLogo, buffer);
+            uploadedBlobUrlLogo = blob.url;
+            fileNameLogo = blob.url;
         }
 
         /* ======================
-           UPDATE thumbnail
+           UPLOAD THUMBNAIL
         ====================== */
         if (fileThumbnail instanceof File && fileThumbnail.size > 0) {
 
@@ -245,24 +250,14 @@ export async function PUT(req) {
                 throw new Error("Format Thumbnail harus JPG, PNG, WEBP");
             }
 
-            /* ===== folder ===== */
-            const uploadDir = path.join(
-                process.cwd(),
-                "public/uploads/hima",
-                user.username
+            const blob = await put(
+                `hima/${user.folder_name}/thumbnail-${Date.now()}-${fileThumbnail.name}`,
+                fileThumbnail,
+                { access: "public" }
             );
 
-            if (!fs.existsSync(uploadDir)) {
-                fs.mkdirSync(uploadDir, { recursive: true });
-            }
-
-            /* ===== simpan file baru ===== */
-            const bytes = await fileThumbnail.arrayBuffer();
-            const buffer = Buffer.from(bytes);
-
-            fileNameThumbnail = `${Date.now()}-${fileThumbnail.name}`;
-            filePathThumbnail = path.join(uploadDir, fileNameThumbnail);
-            fs.writeFileSync(filePathThumbnail, buffer);
+            uploadedBlobUrlThumbnail = blob.url;
+            fileNameThumbnail = blob.url;
         }
         
         /* ======================
@@ -302,43 +297,68 @@ export async function PUT(req) {
             throw new Error();
         }
         await conn.commit();
-        /* ===== hapus file lama ===== */
+        /* ===== hapus file lama logo ===== */
         if (
-                hima.logo &&
-                fileLogo &&
-                fileLogo.size > 0 &&
-                oldLogo
-            ) {
-                const oldPath = path.join(uploadDir, oldLogo);
-                        
-                if (fs.existsSync(oldPath)) {
-                    fs.unlinkSync(oldPath);
+            fileLogo &&
+            fileLogo.size > 0 &&
+            oldLogo
+        ) {
+                try {
+                    await del(oldLogo);
+                } catch (deleteError) {
+                    console.error("Gagal menghapus logo lama dari blob:", deleteError);
                 }
         }
+        /* ===== hapus file lama thumbnail ===== */
         if (
-                hima.thumbnail &&
-                fileThumbnail &&
-                fileThumbnail.size > 0 &&
-                oldThumbnail
-            ) {
-                const oldPath = path.join(uploadDir, oldThumbnail);
-                        
-                if (fs.existsSync(oldPath)) {
-                    fs.unlinkSync(oldPath);
+            fileThumbnail &&
+            fileThumbnail.size > 0 &&
+            oldThumbnail
+        ) {
+                try {
+                    await del(oldThumbnail);
+                } catch (deleteError) {
+                    console.error("Gagal menghapus thumbnail lama dari blob:", deleteError);
                 }
         }
         return NextResponse.json({
             message: "Data berhasil diperbarui"
         });
 
-    } catch (error) {       
+    } catch (error) {
+        console.error("[ERROR] PUT /api/admin/setting:", error);
         await conn.rollback();
-        // 🔥 HAPUS FILE JIKA SUDAH TERSIMPAN
-        if (filePathLogo && fs.existsSync(filePathLogo)) {
-            fs.unlinkSync(filePathLogo);
+        // 🔥 HAPUS BLOB JIKA SUDAH TERSIMPAN
+        if (uploadedBlobUrlLogo) {
+            try {
+                await del(uploadedBlobUrlLogo);
+            } catch (deleteError) {
+                console.error("Gagal menghapus logo baru dari blob:", deleteError);
+            }
         }
-        if (filePathThumbnail && fs.existsSync(filePathThumbnail)) {
-            fs.unlinkSync(filePathThumbnail);
+        if (uploadedBlobUrlThumbnail) {
+            try {
+                await del(uploadedBlobUrlThumbnail);
+            } catch (deleteError) {
+                console.error("Gagal menghapus thumbnail baru dari blob:", deleteError);
+            }
+        }
+        
+        //  Cek apakah error terkait jaringan/koneksi database
+        const isConnectionError = 
+            error.code === 'ETIMEDOUT' || 
+            error.code === 'PROTOCOL_SEQUENCE_TIMEOUT' ||
+            error.code === 'ECONNRESET' ||  
+            error.code === 'ECONNREFUSED' || 
+            error.name === 'TimeoutError';
+        
+        if (isConnectionError) {
+            return NextResponse.json(
+                { 
+                    message: "Gangguan koneksi Gagal Mengubah data. Silakan coba beberapa saat lagi.",
+                },
+                { status: 503 } // 503 Service Unavailable atau 504 Gateway Timeout lebih cocok
+            );
         }
         return NextResponse.json(
             { message: error.message || "Internal server error" },

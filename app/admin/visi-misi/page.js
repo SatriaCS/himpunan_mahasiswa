@@ -29,14 +29,26 @@ export default function VisiMisiPage() {
     };
 
     async function fetchData(){
-        setLoadingData(true);
+        try{
+            setLoadingData(true);
 
-        const res = await fetch("/api/admin/visi-misi");
-        const data = await res.json();   
-        setVisi(data.visi ?? "");
-        setMisi(data.misi ?? "");
+            const res = await fetch("/api/admin/visi-misi");
 
-        setLoadingData(false);
+            if (!res.ok) {
+                    // Ambil pesan error dari backend
+                    const errorData = await res.json(); 
+                    // Lempar error agar masuk ke blok catch
+                    throw new Error(errorData.message || `Gangguan. Silakan coba beberapa saat lagi.`);
+            }
+
+            const data = await res.json();   
+            setVisi(data.visi ?? "");
+            setMisi(data.misi ?? "");
+        } catch (err) {
+            alert(err.message)
+        } finally {
+            setLoadingData(false);
+        }
     }
 
     const handleSave = async () => {

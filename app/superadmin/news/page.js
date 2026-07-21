@@ -46,24 +46,34 @@ export default function NewsPage() {
     const [loadingData, setLoadingData] = useState(true);
 
     const fetchNews = async (currentPage = 1) => {
-        setLoadingData(true)
+        try{
+            setLoadingData(true)
 
-        const res = await fetch(`/api/super-admin/news?page=${currentPage}&limit=${limit}&sort=${sortBy}`,
-            {
-                cache: "no-store"
+            const res = await fetch(`/api/super-admin/news?page=${currentPage}&limit=${limit}&sort=${sortBy}`,
+                {
+                    cache: "no-store"
+                }
+            );
+            if (!res.ok) {
+                    // Ambil pesan error dari backend
+                    const errorData = await res.json(); 
+                    // Lempar error agar masuk ke blok catch
+                    throw new Error(errorData.message || `Gangguan. Silakan coba beberapa saat lagi.`);
             }
-        );
-        const result = await res.json();
-        
-        setNewsList(result.data);
-        setUsername(result.username);
-        setTotalPages(result.totalPages);
-        // AUTO FIX PAGE
-        if (currentPage > result.totalPages && result.totalPages > 0) {
-            setCurrentPage(result.totalPages);
-        }
+            const result = await res.json();
 
-        setLoadingData(false)
+            setNewsList(result.data);
+            setUsername(result.username);
+            setTotalPages(result.totalPages);
+            // AUTO FIX PAGE
+            if (currentPage > result.totalPages && result.totalPages > 0) {
+                setCurrentPage(result.totalPages);
+            }
+        } catch (err) {
+            alert(err.message)
+        } finally {
+            setLoadingData(false);
+        }
     };
 
     useEffect(() => {
@@ -78,17 +88,20 @@ export default function NewsPage() {
     };
 
     const handleEdit = (item) => {
-        setSelectedNews(item);      
+        setSelectedNews(item);
         setModalMode("edit");
-        {item.username ? 
+        if (item.thumbnail && (item.thumbnail.startsWith("http://") || item.thumbnail.startsWith("https://"))) {
+            setImagePreview(item.thumbnail);
+        } else if (item.username) {
             setImagePreview(
                 `/uploads/news/${item.username}/${item.thumbnail}`
-            )
-        : setImagePreview(
+            );
+        } else {
+            setImagePreview(
                 `/uploads/news/${username}/${item.thumbnail}`
-            )
+            );
         }
-        
+
         setFormData({
             judul: item.judul,
             deskripsi: item.deskripsi,
@@ -103,7 +116,7 @@ export default function NewsPage() {
         setIsModalOpen(true);
     };
 
-    const confirmDelete = async() => {
+    const confirmDelete = async () => {
         try {
             setLoading(true)
             const res = await fetch(
@@ -114,15 +127,17 @@ export default function NewsPage() {
             const result = await res.json();
 
             if (!res.ok) {
-                showError(result.message);
-                return;
+                    // Ambil pesan error dari backend
+                    const errorData = await res.json(); 
+                    // Lempar error agar masuk ke blok catch
+                    throw new Error(errorData.message || `Gangguan. Silakan coba beberapa saat lagi.`);
             }
 
             setIsModalOpen(false);
             showSuccess(result.message);
         } catch (error) {
-            showError(error.message);            
-        }finally {
+            showError(error.message);
+        } finally {
             fetchNews(currentPage);
             setLoading(false);
         }
@@ -137,7 +152,7 @@ export default function NewsPage() {
         }
     };
 
-    const handleSubmit = async(e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
 
         if (!formData.thumbnail) {
@@ -162,8 +177,10 @@ export default function NewsPage() {
             const result = await res.json();
 
             if (!res.ok) {
-                showError(result.message);
-                return;
+                    // Ambil pesan error dari backend
+                    const errorData = await res.json(); 
+                    // Lempar error agar masuk ke blok catch
+                    throw new Error(errorData.message || `Gangguan. Silakan coba beberapa saat lagi.`);
             }
 
             showSuccess(result.message);
@@ -179,7 +196,7 @@ export default function NewsPage() {
         }
     };
 
-    const handleSubmitEdit = async(e) => {
+    const handleSubmitEdit = async (e) => {
         e.preventDefault();
 
         try {
@@ -200,8 +217,10 @@ export default function NewsPage() {
             const result = await res.json();
 
             if (!res.ok) {
-                showError(result.message);
-                return;
+                    // Ambil pesan error dari backend
+                    const errorData = await res.json(); 
+                    // Lempar error agar masuk ke blok catch
+                    throw new Error(errorData.message || `Gangguan. Silakan coba beberapa saat lagi.`);
             }
 
             showSuccess(result.message);
@@ -223,12 +242,12 @@ export default function NewsPage() {
         setIsModalOpen(true);
     };
 
-    const confirmHeadline = async() => {
+    const confirmHeadline = async () => {
 
         try {
 
             setLoading(true);
-            
+
             const res = await fetch("/api/super-admin/news/update-headline", {
                 method: "PUT",
                 headers: {
@@ -242,9 +261,11 @@ export default function NewsPage() {
             const result = await res.json();
 
             if (!res.ok) {
-                showError(result.message);
-                return;
-            }
+                        // Ambil pesan error dari backend
+                        const errorData = await res.json(); 
+                        // Lempar error agar masuk ke blok catch
+                        throw new Error(errorData.message || `Gangguan. Silakan coba beberapa saat lagi.`);
+                }
 
             showSuccess(result.message);
             setIsModalOpen(false)
@@ -261,7 +282,7 @@ export default function NewsPage() {
         <div>
             <div className="flex justify-between items-center mb-8">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Berita & Artikel</h1>
+                    <h1 className="text-2xl font-bold text-gray-900">Berita</h1>
                     <p className="text-gray-500 mt-1">Publikasi informasi terbaru</p>
                 </div>
                 <button
@@ -272,22 +293,22 @@ export default function NewsPage() {
                 </button>
             </div>
 
-                    {/* TOOLBAR */}
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+            {/* TOOLBAR */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
 
-                        {/* RIGHT */}
-                        <div className="flex items-center gap-3">
-                            <label className="text-sm text-gray-500">
-                                Urutkan:
-                            </label>
+                {/* RIGHT */}
+                <div className="flex items-center gap-3">
+                    <label className="text-sm text-gray-500">
+                        Urutkan:
+                    </label>
 
-                            <select
-                                value={sortBy}
-                                onChange={(e) => {
-                                    setCurrentPage(1); // reset halaman
-                                    setSortBy(e.target.value);
-                                }}
-                                className="
+                    <select
+                        value={sortBy}
+                        onChange={(e) => {
+                            setCurrentPage(1); // reset halaman
+                            setSortBy(e.target.value);
+                        }}
+                        className="
                                     px-4 py-2
                                     rounded-xl
                                     border border-gray-200
@@ -300,107 +321,99 @@ export default function NewsPage() {
                                     hover:border-blue-400
                                     transition
                                 "
-                            >
-                                <option value="latest">Terbaru</option>
-                                <option value="views">Views</option>
-                            </select>
-                        </div>
-                    </div>
-                {loadingData ? (
-                                <div className="flex justify-center items-center gap-2">
-                                    <div className="w-6 h-6 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-                                    <span className="text-gray-500">Memuat data...</span>
-                                </div>
-                            ) : newsList.length === 0 ? (
-                                <div className="text-center py-10 text-gray-400 bg-white rounded-2xl border border-gray-100 p-8">Belum ada data</div>
-                            ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    
-                                {newsList.map((item) => (
-                                    <div key={item.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-all group">
-                                        <div className="aspect-[16/9] w-full overflow-hidden relative bg-gray-100 flex items-center justify-center">
-                                            {item.username ?
-                                            <img
-                                                src={`/uploads/news/${item.username}/${item.thumbnail}`}
-                                                alt={item.judul}
-                                                className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-500"
-                                            />
-                                            :
-                                            <img
-                                                src={`/uploads/news/${username}/${item.thumbnail}`}
-                                                alt={item.judul}
-                                                className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-500"
-                                            />
-                                            }
-                                        </div>
-                                        <div className="p-6">
-                                            <div className="flex justify-between items-start mb-4">
-                                                {item.headline ? (
-                                                    <span className="px-3 py-1 bg-green-50 text-green-600 border border-green-200 rounded-full text-[10px] font-bold flex items-center gap-1">
-                                                        📢 Headline Aktif
-                                                    </span>
-                                                    
-                                                ): ""}
-                                                <div className="flex gap-2">
-                                                    <button
-                                                        onClick={() => handleHeadline(item)}
-                                                        className="p-2.5 bg-gray-50 text-blue-600 rounded-xl hover:bg-blue-50 transition-colors"
-                                                        title="headline"
-                                                    >
-                                                        📢
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleEdit(item)}
-                                                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                                        title="Edit"
-                                                    >
-                                                        ✏️
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleDelete(item)}
-                                                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                                        title="Hapus"
-                                                    >
-                                                        🗑️
-                                                    </button>
-                                                </div>
-                                            </div>
-                                            <div className="flex justify-between items-start mb-4">
-                                                <span className="px-3 py-1 bg-green-50 text-gray-600 border border-gray-200 rounded-full text-[10px] font-bold flex items-center gap-1">
-                                                        {item.views} Views
-                                                </span>
-                                            </div>
-                                            <div className="flex justify-between items-start mb-4">
-                                                <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">
-                                                    {
-                                                        item.updated_at
-                                                            ? `Updated : ${new Date(item.updated_at).toLocaleDateString("id-ID", {
-                                                                day: "numeric",
-                                                                month: "long",
-                                                                year: "numeric"
-                                                            })}`
-                                                            : new Date(item.created_at).toLocaleDateString("id-ID", {
-                                                                day: "numeric",
-                                                                month: "long",
-                                                                year: "numeric"
-                                                            })
-                                                    }
-                                                </span>
-                                            </div>
+                    >
+                        <option value="latest">Terbaru</option>
+                        <option value="views">Views</option>
+                    </select>
+                </div>
+            </div>
+            {loadingData ? (
+                <div className="flex justify-center items-center gap-2">
+                    <div className="w-6 h-6 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                    <span className="text-gray-500">Memuat data...</span>
+                </div>
+            ) : newsList.length === 0 ? (
+                <div className="text-center py-10 text-gray-400 bg-white rounded-2xl border border-gray-100 p-8">Belum ada data</div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
-                                            <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2 leading-tight">
-                                                {item.judul}
-                                            </h3>
-                                            <p className="text-gray-500 text-sm line-clamp-3 mb-4">
-                                                {item.deskripsi}
-                                            </p>
-                                        </div>
+                    {newsList.map((item) => (
+                        <div key={item.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-all group">
+                            <div className="aspect-[16/9] w-full overflow-hidden relative bg-gray-100 flex items-center justify-center">
+                                <img
+                                    src={item.thumbnail}
+                                    alt={item.judul}
+                                    className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-500"
+                                />
+                            </div>
+                            <div className="p-6">
+                                <div className="flex justify-between items-start mb-4">
+                                    {item.headline ? (
+                                        <span className="px-3 py-1 bg-green-50 text-green-600 border border-green-200 rounded-full text-[10px] font-bold flex items-center gap-1">
+                                            📢 Headline Aktif
+                                        </span>
+
+                                    ) : ""}
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => handleHeadline(item)}
+                                            className="p-2.5 bg-gray-50 text-blue-600 rounded-xl hover:bg-blue-50 transition-colors"
+                                            title="headline"
+                                        >
+                                            📢
+                                        </button>
+                                        <button
+                                            onClick={() => handleEdit(item)}
+                                            className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                            title="Edit"
+                                        >
+                                            ✏️
+                                        </button>
+                                        <button
+                                            onClick={() => handleDelete(item)}
+                                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                            title="Hapus"
+                                        >
+                                            🗑️
+                                        </button>
                                     </div>
-                                ))}
                                 </div>
-                            )
-                }
-            {newsList.length > 0 && 
+                                <div className="flex justify-between items-start mb-4">
+                                    <span className="px-3 py-1 bg-green-50 text-gray-600 border border-gray-200 rounded-full text-[10px] font-bold flex items-center gap-1">
+                                        {item.views} Views
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-start mb-4">
+                                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">
+                                        {
+                                            item.updated_at
+                                                ? `Updated : ${new Date(item.updated_at).toLocaleDateString("id-ID", {
+                                                    day: "numeric",
+                                                    month: "long",
+                                                    year: "numeric"
+                                                })}`
+                                                : new Date(item.created_at).toLocaleDateString("id-ID", {
+                                                    day: "numeric",
+                                                    month: "long",
+                                                    year: "numeric"
+                                                })
+                                        }
+                                    </span>
+                                </div>
+
+                                <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2 leading-tight">
+                                    {item.judul}
+                                </h3>
+                                <p className="text-gray-500 text-sm line-clamp-3 mb-4">
+                                    {item.deskripsi}
+                                </p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )
+            }
+            {newsList.length > 0 &&
                 <Pagination
                     currentPage={currentPage}
                     totalPages={totalPages}
@@ -422,8 +435,8 @@ export default function NewsPage() {
                                 : ""
                 }
             >
-                {(modalMode === "add" || modalMode === "edit" ) && (
-                    <form onSubmit={modalMode === "add" ? handleSubmit : handleSubmitEdit } className="space-y-4">
+                {(modalMode === "add" || modalMode === "edit") && (
+                    <form onSubmit={modalMode === "add" ? handleSubmit : handleSubmitEdit} className="space-y-4">
                         <div>
                             <label className="block text-sm font-bold text-gray-700 mb-1">Judul Berita</label>
                             <input
@@ -475,7 +488,7 @@ export default function NewsPage() {
                             disabled={loading}
                             className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg shadow-blue-200 transition-all mt-4"
                         >
-                            {loading ? "loading... ":modalMode === "add" ? "Publikasikan" : "Simpan Perubahan"}
+                            {loading ? "loading... " : modalMode === "add" ? "Tambah" : "Simpan Perubahan"}
                         </button>
                     </form>
                 )}
@@ -501,7 +514,7 @@ export default function NewsPage() {
                                 disabled={loading}
                                 className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold shadow-lg shadow-red-200 transition-all"
                             >
-                                {loading ? "loading...":"hapus"}
+                                {loading ? "loading..." : "hapus"}
                             </button>
                         </div>
                     </div>
@@ -543,7 +556,7 @@ export default function NewsPage() {
                                 onClick={confirmHeadline}
                                 className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg shadow-red-200 transition-all"
                             >
-                                {loading ? "loading...":"Ubah"}
+                                {loading ? "loading..." : "Ubah"}
                             </button>
                         </div>
                     </div>

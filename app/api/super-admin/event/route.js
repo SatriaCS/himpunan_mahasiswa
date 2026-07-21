@@ -140,7 +140,23 @@ export async function GET(req) {
         });
 
     } catch (error) {
-        
+        console.error("[ERROR] GET /api/super-admin/event:", error);
+        //  Cek apakah error terkait jaringan/koneksi database
+        const isConnectionError = 
+            error.code === 'ETIMEDOUT' || 
+            error.code === 'PROTOCOL_SEQUENCE_TIMEOUT' ||
+            error.code === 'ECONNRESET' ||  
+            error.code === 'ECONNREFUSED' || 
+            error.name === 'TimeoutError';
+
+        if (isConnectionError) {
+            return NextResponse.json(
+                { 
+                    message: "Gangguan koneksi Gagal Memuat data kegiatan. Silakan coba beberapa saat lagi.",
+                },
+                { status: 503 } // 503 Service Unavailable atau 504 Gateway Timeout lebih cocok
+            );
+        }
         return NextResponse.json(
             { message: "Internal server error" },
             { status: 500 }
@@ -309,10 +325,8 @@ export async function POST(req) {
     } catch (error) {
 
         await conn.rollback();
-        
+        console.error("[ERROR] POST /api/super-admin/event:", error);
         // 🔥 HAPUS FILE JIKA SUDAH TERSIMPAN
-        console.error("Gagal membuat kegiatan:", error);
-
         if (uploadedBlobUrl) {
             try {
                 await del(uploadedBlobUrl);
@@ -321,6 +335,23 @@ export async function POST(req) {
             }
         }
         
+        //  Cek apakah error terkait jaringan/koneksi database
+        const isConnectionError = 
+            error.code === 'ETIMEDOUT' || 
+            error.code === 'PROTOCOL_SEQUENCE_TIMEOUT' ||
+            error.code === 'ECONNRESET' ||  
+            error.code === 'ECONNREFUSED' || 
+            error.name === 'TimeoutError';
+
+        if (isConnectionError) {
+            return NextResponse.json(
+                { 
+                    message: "Gangguan koneksi Gagal Menambah data kegiatan. Silakan coba beberapa saat lagi.",
+                },
+                { status: 503 } // 503 Service Unavailable atau 504 Gateway Timeout lebih cocok
+            );
+        }
+
         return NextResponse.json(
             { message: "Internal server error" },
             { status: 500 }
@@ -442,7 +473,7 @@ export async function PUT(req) {
                 );
             }
             const [[akunData]] = await conn.query(
-                "SELECT username FROM akun WHERE id_akun=?",
+                "SELECT folder_name FROM hima WHERE id_akun=?",
                 [hima.id_akun]
             );
 
@@ -493,7 +524,7 @@ export async function PUT(req) {
                 );
             }
 
-            const uploadUsername = kegiatan.id_hima ? akun.username : user.username;
+            const uploadUsername = kegiatan.id_hima ? akun.folder_name : user.username;
 
             const blob = await put(
                 `event/${uploadUsername}/${Date.now()}-${fileFlayer.name}`,
@@ -554,9 +585,9 @@ export async function PUT(req) {
         });
 
     } catch (error) {
-         await conn.rollback();
+        await conn.rollback();
 
-        console.error("Gagal membuat kegiatan:", error);
+        console.error("[ERROR] PUT /api/super-admin/event:", error);
 
         if (uploadedBlobUrl) {
             try {
@@ -565,6 +596,23 @@ export async function PUT(req) {
                 console.error("Gagal menghapus flayer baru:", deleteError);
             }
         }
+
+        //  Cek apakah error terkait jaringan/koneksi database
+        const isConnectionError = 
+            error.code === 'ETIMEDOUT' || 
+            error.code === 'PROTOCOL_SEQUENCE_TIMEOUT' ||
+            error.code === 'ECONNRESET' ||  
+            error.code === 'ECONNREFUSED' || 
+            error.name === 'TimeoutError';
+
+        if (isConnectionError) {
+            return NextResponse.json(
+                { 
+                    message: "Gangguan koneksi Gagal Mengubah data kegiatan. Silakan coba beberapa saat lagi.",
+                },
+                { status: 503 } // 503 Service Unavailable atau 504 Gateway Timeout lebih cocok
+            );
+        }        
 
         return NextResponse.json(
             { message: "Internal server error" },
@@ -707,7 +755,24 @@ export async function DELETE(req) {
 
     } catch (error) {
         await conn.rollback();
-        
+        console.error("[ERROR] DELETE /api/super-admin/event:", error);
+        //  Cek apakah error terkait jaringan/koneksi database
+        const isConnectionError = 
+            error.code === 'ETIMEDOUT' || 
+            error.code === 'PROTOCOL_SEQUENCE_TIMEOUT' ||
+            error.code === 'ECONNRESET' ||  
+            error.code === 'ECONNREFUSED' || 
+            error.name === 'TimeoutError';
+
+        if (isConnectionError) {
+            return NextResponse.json(
+                { 
+                    message: "Gangguan koneksi Gagal Mengubah data kegiatan. Silakan coba beberapa saat lagi.",
+                },
+                { status: 503 } // 503 Service Unavailable atau 504 Gateway Timeout lebih cocok
+            );
+        } 
+
         return NextResponse.json(
             { message: "Terjadi kesalahan server" },
             { status: 500 }

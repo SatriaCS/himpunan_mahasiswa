@@ -8,7 +8,7 @@ import Modal from "@/app/components/Modal";
 export default function ProfileDetailPage({ params }) {
     // Await params to access id
     const { slug } = use(params);
-    
+
     const [data, setData] = useState(null);
     // loading
     const [loading, setLoading] = useState(true);
@@ -18,7 +18,7 @@ export default function ProfileDetailPage({ params }) {
 
     const handleView = (item) => {
         setSelectedPhoto(item);
-        setIsModalOpen(true);        
+        setIsModalOpen(true);
     };
     function Skeleton() {
         return (
@@ -31,7 +31,7 @@ export default function ProfileDetailPage({ params }) {
 
                     {/* Visi Misi */}
                     <div className="grid lg:grid-cols-2 gap-8">
-                        {[1,2].map((i)=>(
+                        {[1, 2].map((i) => (
                             <div key={i} className="bg-white rounded-2xl p-8 shadow">
                                 <div className="h-6 w-40 bg-gray-200 rounded mb-6"></div>
                                 <div className="space-y-3">
@@ -48,7 +48,7 @@ export default function ProfileDetailPage({ params }) {
                         <div className="h-8 w-64 bg-gray-200 rounded mx-auto mb-10"></div>
 
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-10">
-                            {Array.from({length:4}).map((_,i)=>(
+                            {Array.from({ length: 4 }).map((_, i) => (
                                 <div key={i} className="text-center space-y-4">
                                     <div className="w-32 h-32 bg-gray-200 rounded-full mx-auto"></div>
                                     <div className="h-4 bg-gray-200 rounded w-3/4 mx-auto"></div>
@@ -63,7 +63,7 @@ export default function ProfileDetailPage({ params }) {
                         <div className="h-8 w-72 bg-gray-200 rounded mx-auto mb-10"></div>
 
                         <div className="grid md:grid-cols-3 gap-8">
-                            {Array.from({length:3}).map((_,i)=>(
+                            {Array.from({ length: 3 }).map((_, i) => (
                                 <div key={i} className="h-64 bg-gray-200 rounded-2xl"></div>
                             ))}
                         </div>
@@ -78,7 +78,7 @@ export default function ProfileDetailPage({ params }) {
                     </div>
 
                 </div>
-                
+
                 {isModalOpen && selectedPhoto && (
                     <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
                         <div className="bg-white rounded-2xl max-w-3xl w-full p-6 relative">
@@ -91,7 +91,7 @@ export default function ProfileDetailPage({ params }) {
                             </button>
 
                             <img
-                                src={`/uploads/dokumentasi/${selectedPhoto.username}/${selectedPhoto.foto}`}
+                                src={selectedPhoto.foto}
                                 alt={selectedPhoto.judul}
                                 className="w-full h-auto object-contain rounded-xl mb-4"
                             />
@@ -110,11 +110,19 @@ export default function ProfileDetailPage({ params }) {
             setLoading(true);
 
             const res = await fetch(`/api/user/hima/${slug}`);
+
+            if (!res.ok) {
+                    // Ambil pesan error dari backend
+                    const errorData = await res.json(); 
+                    // Lempar error agar masuk ke blok catch
+                    throw new Error(errorData.message || `Gangguan. Silakan coba beberapa saat lagi.`);
+            }
+            
             const result = await res.json();
 
             setData(result);
         } catch (err) {
-            console.log(err);
+            alert(err.message);
         } finally {
             setLoading(false);
         }
@@ -147,13 +155,13 @@ export default function ProfileDetailPage({ params }) {
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
             {/* Hero Profile */}
-            
+
             <div className="relative h-[500px] flex items-center justify-center text-white overflow-hidden">
 
                 {/* BLUR BACKGROUND */}
                 {data.thumbnail && (
                     <img
-                        src={`/uploads/hima/${data.username}/${data.thumbnail}`}
+                        src={data.thumbnail}
                         className="absolute inset-0 w-full h-full object-cover blur-2xl scale-110"
                         alt=""
                     />
@@ -165,7 +173,7 @@ export default function ProfileDetailPage({ params }) {
                 {/* IMAGE ASLI (TIDAK TERPOTONG) */}
                 {data.thumbnail && (
                     <img
-                        src={`/uploads/hima/${data.username}/${data.thumbnail}`}
+                        src={data.thumbnail}
                         alt="Profile Hero"
                         className="absolute inset-0 w-full h-full object-contain z-0"
                     />
@@ -174,10 +182,10 @@ export default function ProfileDetailPage({ params }) {
                 {/* CONTENT */}
                 <div className="relative z-10 text-center">
                     <div className={`inline-flex items-center justify-center p-5 bg-white/20 backdrop-blur-md rounded-3xl mb-8 shadow-2xl border border-white/20`}>
-                        {data.logo ? 
+                        {data.logo ?
                             (<div className="relative h-14 w-14 rounded-2xl overflow-hidden shadow-inner">
-                                    <Image
-                                    src={`/uploads/hima/${data.username}/${data.logo}`}
+                                <Image
+                                    src={data.logo}
                                     alt={data.nama}
                                     fill
                                     sizes="56px"
@@ -194,7 +202,7 @@ export default function ProfileDetailPage({ params }) {
                     <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight mb-6 drop-shadow-lg text-white">
                         {data.nama}
                     </h1>
-                    {data.singkatan && 
+                    {data.singkatan &&
                         <div className="flex justify-center mb-8">
                             <span className="px-6 py-2 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-base font-bold tracking-widest uppercase shadow-lg">
                                 {data.singkatan}
@@ -204,7 +212,7 @@ export default function ProfileDetailPage({ params }) {
                 </div>
 
             </div>
-            
+
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-16 pb-20 relative z-10 w-full">
                 <div className="grid gap-8 lg:grid-cols-2">
@@ -254,15 +262,15 @@ export default function ProfileDetailPage({ params }) {
                                         <div className="absolute inset-0 rounded-full border-4 border-white shadow-sm overflow-hidden z-10">
                                             {item.foto ?
                                                 <img
-                                                    src={`/uploads/member/${data.username}/${item.foto}`}
+                                                    src={item.foto}
                                                     alt={item.nama}
                                                     className="w-full h-full object-cover"
                                                 /> :
                                                 <div className="w-full h-full flex justify-center items-center">
                                                     <span className="text-gray-400 text-8xl">👤</span>
                                                 </div>
-                                                
-                                            }                                            
+
+                                            }
 
                                         </div>
                                     </div>
@@ -280,50 +288,50 @@ export default function ProfileDetailPage({ params }) {
                     </div>
                 </div>
 
-                {/* Dokumentasi Kegiatan */}
+                {/* Dokumentasi */}
                 <div className="mt-12">
                     <div className="flex items-center justify-center mb-10">
                         <h2 className="text-3xl font-extrabold text-gray-900 text-center">
-                            Dokumentasi Kegiatan
+                            Dokumentasi
                             <span className={`block mt-2 h-1.5 w-24 bg-gradient-to-r from-blue-400 to-blue-600 mx-auto rounded-full`}></span>
                         </h2>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                            {data.dokumentasi.map((item, index) => (
-                                <div
-                                    key={index}
-                                    className="group relative h-64 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300"
-                                >
-                                    {/* IMAGE */}
-                                    <img
-                                        src={`/uploads/dokumentasi/${data.username}/${item.foto}`}
-                                        alt="Seminar"
-                                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                                    />
+                        {data.dokumentasi.map((item, index) => (
+                            <div
+                                key={index}
+                                className="group relative h-64 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300"
+                            >
+                                {/* IMAGE */}
+                                <img
+                                    src={item.foto}
+                                    alt="Dokumentasi"
+                                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                />
 
-                                    {/* DARK OVERLAY */}
-                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                                {/* DARK OVERLAY */}
+                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
-                                    {/* BUTTON CENTER */}
-                                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button
-                                            onClick={() => handleView(item)}
-                                            className="p-3 bg-white/20 text-white rounded-lg hover:bg-white/40 backdrop-blur-sm"
-                                            title="Lihat"
-                                        >
-                                            🔍
-                                        </button>
-                                    </div>
-
-                                    {/* TITLE BOTTOM LEFT */}
-                                    <div className="absolute bottom-0 left-0 w-full p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                        <span className="text-white font-bold text-lg">
-                                            {item.judul}
-                                        </span>
-                                    </div>
+                                {/* BUTTON CENTER */}
+                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button
+                                        onClick={() => handleView(item)}
+                                        className="p-3 bg-white/20 text-white rounded-lg hover:bg-white/40 backdrop-blur-sm"
+                                        title="Lihat"
+                                    >
+                                        🔍
+                                    </button>
                                 </div>
-                            ))}
+
+                                {/* TITLE BOTTOM LEFT */}
+                                <div className="absolute bottom-0 left-0 w-full p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                    <span className="text-white font-bold text-lg">
+                                        {item.judul}
+                                    </span>
+                                </div>
                             </div>
+                        ))}
+                    </div>
                 </div>
 
                 {/* Hubungi Kami */}
@@ -350,7 +358,7 @@ export default function ProfileDetailPage({ params }) {
                     </div>
                 </div>
             </div>
-            
+
             <Modal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
@@ -359,7 +367,11 @@ export default function ProfileDetailPage({ params }) {
                 {selectedPhoto && (
                     <div className="text-center">
                         <div className="rounded-xl overflow-hidden mb-4 border border-gray-200">
-                            <img src={`/uploads/dokumentasi/${data.username}/${selectedPhoto.foto}`} alt={selectedPhoto.judul} className="w-full h-auto object-cover" />
+                            <img
+                                src={selectedPhoto.foto}
+                                alt={selectedPhoto.judul}
+                                className="w-full h-auto object-cover"
+                            />
                         </div>
                         <h4 className="text-xl font-bold text-gray-900 mb-6">{selectedPhoto.judul}</h4>
                         <button

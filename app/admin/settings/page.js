@@ -49,39 +49,61 @@ export default function SettingsPage() {
     const [loadingDataPengguna, setLoadingDataPengguna] = useState(true);
 
     const fetchSetting = async () => {
-        setLoadingData(true)
+        try{
+            setLoadingData(true)
 
-        const res = await fetch("/api/admin/setting");
-        const data = await res.json();
-        
-        const hima = (data[0]);
-        setHimaData({
-            nama: hima.nama ?? "",
-            singkatan: hima.singkatan ?? "",
-            visi: hima.visi ?? "",
-            misi: hima.misi ?? "",
-            email: hima.email ?? "",
-            no_kontak: hima.no_kontak ?? "",
-            username: hima.username ?? "",
-            logo: hima.logo ?? null,
-            thumbnail: hima.thumbnail ?? null,
-        });
+            const res = await fetch("/api/admin/setting");
 
-        setUserUsername(hima.username)
+            if (!res.ok) {
+                // Ambil pesan error dari backend
+                const errorData = await res.json(); 
+                // Lempar error agar masuk ke blok catch
+                throw new Error(errorData.message || `Gangguan. Silakan coba beberapa saat lagi.`);
+            }
 
-        setLoadingData(false)
+            const data = await res.json();
+
+            const hima = (data[0]);
+            setHimaData({
+                nama: hima.nama ?? "",
+                singkatan: hima.singkatan ?? "",
+                visi: hima.visi ?? "",
+                misi: hima.misi ?? "",
+                email: hima.email ?? "",
+                no_kontak: hima.no_kontak ?? "",
+                username: hima.username ?? "",
+                logo: hima.logo ?? null,
+                thumbnail: hima.thumbnail ?? null,
+            });
+
+            setUserUsername(hima.username)
+        } catch (error) {
+            showError(error.message);
+        } finally {
+            setLoadingData(false);
+        }
     };
 
     const fetchPengguna = async () => {
-        setLoadingDataPengguna(true)
+        try{
+            setLoadingDataPengguna(true)
 
-        const res = await fetch("/api/admin/setting");
-        const data = await res.json();
-        const hima = (data[0]);
+            const res = await fetch("/api/admin/setting");
+            if (!res.ok) {
+                // Ambil pesan error dari backend
+                const errorData = await res.json(); 
+                // Lempar error agar masuk ke blok catch
+                throw new Error(errorData.message || `Gangguan. Silakan coba beberapa saat lagi.`);
+            }
+            const data = await res.json();
+            const hima = (data[0]);
 
-        setUserUsername(hima.username)
-
-        setLoadingDataPengguna(false)
+            setUserUsername(hima.username)
+        } catch (error) {
+            showError(error.message);
+        } finally {
+            setLoadingDataPengguna(false);
+        }
     };
 
     useEffect(() => {
@@ -117,7 +139,7 @@ export default function SettingsPage() {
         }
     };
 
-    const handleHimaSubmit = async(e) => {
+    const handleHimaSubmit = async (e) => {
         e.preventDefault();
 
         try {
@@ -142,12 +164,14 @@ export default function SettingsPage() {
                 body: data
             });
 
-            const result = await res.json();
-
             if (!res.ok) {
-                showError(result.message);
-                return;
+                // Ambil pesan error dari backend
+                const errorData = await res.json(); 
+                // Lempar error agar masuk ke blok catch
+                throw new Error(errorData.message || `Gangguan. Silakan coba beberapa saat lagi.`);
             }
+
+            const result = await res.json();
 
             showSuccess(result.message);
         } catch (error) {
@@ -160,28 +184,30 @@ export default function SettingsPage() {
         }
     };
 
-    const handleUserSubmit = async(e) => {
+    const handleUserSubmit = async (e) => {
         e.preventDefault();
         try {
 
             setLoadingUsername(true);
 
-            const res = await fetch("/api/admin/setting/update-username",{
-                method:"PUT",
-                headers:{
-                    "Content-Type":"application/json"
+            const res = await fetch("/api/admin/setting/update-username", {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json"
                 },
-                body:JSON.stringify({
-                    username : userUsername,
+                body: JSON.stringify({
+                    username: userUsername,
                 })
             });
 
-            const result = await res.json();
-
             if (!res.ok) {
-                showError(result.message);
-                return;
+                // Ambil pesan error dari backend
+                const errorData = await res.json(); 
+                // Lempar error agar masuk ke blok catch
+                throw new Error(errorData.message || `Gangguan. Silakan coba beberapa saat lagi.`);
             }
+
+            const result = await res.json();
 
             showSuccess(result.message);
         } catch (error) {
@@ -192,7 +218,7 @@ export default function SettingsPage() {
         }
     };
 
-    const handlePasswordSubmit = async(e) => {
+    const handlePasswordSubmit = async (e) => {
         e.preventDefault();
         if (userPasswordData.newPassword !== userPasswordData.confirmPassword) {
             alert("Konfirmasi password baru tidak cocok!");
@@ -203,25 +229,27 @@ export default function SettingsPage() {
 
             setLoadingPassword(true);
 
-            const res = await fetch("/api/admin/setting/update-password",{
-                method:"PUT",
-                headers:{
-                    "Content-Type":"application/json"
+            const res = await fetch("/api/admin/setting/update-password", {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json"
                 },
-                body:JSON.stringify({
-                    password : userPasswordData.confirmPassword,
+                body: JSON.stringify({
+                    password: userPasswordData.confirmPassword,
                 })
             });
 
             const result = await res.json();
 
             if (!res.ok) {
-                showError(result.message);
-                return;
+                // Ambil pesan error dari backend
+                const errorData = await res.json(); 
+                // Lempar error agar masuk ke blok catch
+                throw new Error(errorData.message || `Gangguan. Silakan coba beberapa saat lagi.`);
             }
 
             showSuccess(result.message);
-            setUserPasswordData({newPassword: "", confirmPassword: "" });
+            setUserPasswordData({ newPassword: "", confirmPassword: "" });
         } catch (error) {
             showError(error.message);
         } finally {
@@ -246,129 +274,129 @@ export default function SettingsPage() {
                         </h2>
                     </div>
                     {loadingData ? (
-                                <div className="flex my-2 justify-center items-center gap-2">
-                                    <div className="w-6 h-6 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-                                    <span className="text-gray-500">Memuat data...</span>
-                                </div>
-                            )  : (
-                                <div className="p-8">
-                                    <form onSubmit={handleHimaSubmit} className="space-y-6">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div className="md:col-span-2 space-y-6">
-                                                {/* Thumbnail / Logo Himpunan */}
-                                                <div className="flex flex-col gap-2">
-                                                    <label className="block text-sm font-bold text-gray-700">Thumbnail</label>
-                                                    <div className="relative w-64 h-32 rounded-xl overflow-hidden bg-gray-100 border-2 border-dashed border-gray-300 group">
-                                                        {(himaThumbnailPreview || himaData?.thumbnail) ? (
+                        <div className="flex my-2 justify-center items-center gap-2">
+                            <div className="w-6 h-6 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                            <span className="text-gray-500">Memuat data...</span>
+                        </div>
+                    ) : (
+                        <div className="p-8">
+                            <form onSubmit={handleHimaSubmit} className="space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="md:col-span-2 space-y-6">
+                                        {/* Thumbnail / Logo Himpunan */}
+                                        <div className="flex flex-col gap-2">
+                                            <label className="block text-sm font-bold text-gray-700">Thumbnail</label>
+                                            <div className="relative w-64 h-32 rounded-xl overflow-hidden bg-gray-100 border-2 border-dashed border-gray-300 group">
+                                                {(himaThumbnailPreview || himaData?.thumbnail) ? (
 
-                                                            <img
-                                                                src={
-                                                                    himaThumbnailPreview ||
-                                                                    `/uploads/hima/${himaData.username}/${himaData.thumbnail}`
-                                                                }
-                                                                alt="Thumbnail"
-                                                                className="w-full h-full object-contain"
-                                                            />
+                                                    <img
+                                                        src={
+                                                            himaThumbnailPreview ||
+                                                            himaData.thumbnail
+                                                        }
+                                                        alt="Thumbnail"
+                                                        className="w-full h-full object-contain"
+                                                    />
 
-                                                        ) : (
+                                                ) : (
 
-                                                            /* ICON PLACEHOLDER */
-                                                            <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
-                                                                <span className="text-4xl">🖼️</span>
-                                                                <p className="text-xs mt-1">Belum ada gambar</p>
-                                                                <p className="text-xs mt-1 text-gray-400">(Tipe: JPG, PNG, Max 5MB)</p>
-                                                            </div>
-
-                                                        )}                                           
-                                                        <label className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white text-xs text-center p-1">
-                                                            Ganti Thumbnail
-                                                            <input type="file" accept="image/*" className="hidden" onChange={handleHimaThumbnailChange} />
-                                                        </label>
+                                                    /* ICON PLACEHOLDER */
+                                                    <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
+                                                        <span className="text-4xl">🖼️</span>
+                                                        <p className="text-xs mt-1">Belum ada gambar</p>
+                                                        <p className="text-xs mt-1 text-gray-400">(Tipe: JPG, PNG, Max 5MB)</p>
                                                     </div>
-                                                </div>
 
-                                                {/* Foto Profil Admin moved here */}
-                                                <div className="flex items-center gap-4">
-                                                    <div className="relative w-20 h-20 rounded-full overflow-hidden bg-gray-100 border-2 border-gray-200 group shrink-0">
-                                                        {(logoPhotoPreview || himaData?.logo) ? (
-
-                                                            <img
-                                                                src={
-                                                                    logoPhotoPreview ||
-                                                                    `/uploads/hima/${himaData.username}/${himaData.logo}`
-                                                                }
-                                                                alt="Thumbnail"
-                                                                className="w-full h-full object-cover"
-                                                            />
-
-                                                        ) : (
-
-                                                            /* ICON PLACEHOLDER */
-                                                            <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
-                                                                <p className="text-[8px] mt-1">Belum ada gambar</p>
-                                                            </div>
-
-                                                        )}
-                                                        <label className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white text-[10px] text-center p-1">
-                                                            Ubah
-                                                            <input type="file" accept="image/*" className="hidden" onChange={handleHimaLogoChange} />
-                                                        </label>
-                                                    </div>
-                                                    <div>
-                                                        <h3 className="text-sm font-bold text-gray-900">Logo hima</h3>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div className="md:col-span-2">
-                                                <label className="block text-sm font-bold text-gray-700 mb-2">Nama Himpunan</label>
-                                                <input
-                                                    type="text"
-                                                    required
-                                                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-black"
-                                                    value={himaData.nama}
-                                                    onChange={(e) => setHimaData({ ...himaData, nama: e.target.value })}
-                                                />
-                                            </div>
-                                            <div className="md:col-span-1">
-                                                <label className="block text-sm font-bold text-gray-700 mb-2">Singkatan</label>
-                                                <input
-                                                    type="text"
-                                                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-black"
-                                                    value={himaData.singkatan}
-                                                    onChange={(e) => setHimaData({ ...himaData, singkatan: e.target.value })}
-                                                />
-                                            </div>
-                                            <div className="md:col-span-1">
-                                                <label className="block text-sm font-bold text-gray-700 mb-2">Email Himpunan</label>
-                                                <input
-                                                    type="email"
-                                                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-black"
-                                                    value={himaData.email}
-                                                    onChange={(e) => setHimaData({ ...himaData, email: e.target.value })}
-                                                />
-                                            </div>
-                                            <div className="md:col-span-1">
-                                                <label className="block text-sm font-bold text-gray-700 mb-2">No. Kontak / WhatsApp</label>
-                                                <input
-                                                    type="text"                                                    
-                                                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-black"
-                                                    value={himaData.no_kontak}
-                                                    onChange={(e) => setHimaData({ ...himaData, no_kontak: e.target.value })}
-                                                />
+                                                )}
+                                                <label className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white text-xs text-center p-1">
+                                                    Ganti Thumbnail
+                                                    <input type="file" accept="image/*" className="hidden" onChange={handleHimaThumbnailChange} />
+                                                </label>
                                             </div>
                                         </div>
-                                        <div className="flex justify-end pt-2">
-                                            <button
-                                                type="submit"
-                                                disabled={loading}
-                                                className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg shadow-blue-200 transition-all"
-                                            >
-                                                {loading ? "loading..." : "Simpan Profil Hima"}
-                                            </button>
+
+                                        {/* Foto Profil Admin moved here */}
+                                        <div className="flex items-center gap-4">
+                                            <div className="relative w-20 h-20 rounded-full overflow-hidden bg-gray-100 border-2 border-gray-200 group shrink-0">
+                                                {(logoPhotoPreview || himaData?.logo) ? (
+
+                                                    <img
+                                                        src={
+                                                            logoPhotoPreview ||
+                                                            himaData.logo
+                                                        }
+                                                        alt="Thumbnail"
+                                                        className="w-full h-full object-cover"
+                                                    />
+
+                                                ) : (
+
+                                                    /* ICON PLACEHOLDER */
+                                                    <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
+                                                        <p className="text-[8px] mt-1">Belum ada gambar</p>
+                                                    </div>
+
+                                                )}
+                                                <label className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white text-[10px] text-center p-1">
+                                                    Ubah
+                                                    <input type="file" accept="image/*" className="hidden" onChange={handleHimaLogoChange} />
+                                                </label>
+                                            </div>
+                                            <div>
+                                                <h3 className="text-sm font-bold text-gray-900">Logo hima</h3>
+                                            </div>
                                         </div>
-                                    </form>
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">Nama Himpunan</label>
+                                        <input
+                                            type="text"
+                                            required
+                                            className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-black"
+                                            value={himaData.nama}
+                                            onChange={(e) => setHimaData({ ...himaData, nama: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="md:col-span-1">
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">Singkatan</label>
+                                        <input
+                                            type="text"
+                                            className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-black"
+                                            value={himaData.singkatan}
+                                            onChange={(e) => setHimaData({ ...himaData, singkatan: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="md:col-span-1">
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">Email Himpunan</label>
+                                        <input
+                                            type="email"
+                                            className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-black"
+                                            value={himaData.email}
+                                            onChange={(e) => setHimaData({ ...himaData, email: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="md:col-span-1">
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">No. Kontak / WhatsApp</label>
+                                        <input
+                                            type="text"
+                                            className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-black"
+                                            value={himaData.no_kontak}
+                                            onChange={(e) => setHimaData({ ...himaData, no_kontak: e.target.value })}
+                                        />
+                                    </div>
                                 </div>
-                            )
+                                <div className="flex justify-end pt-2">
+                                    <button
+                                        type="submit"
+                                        disabled={loading}
+                                        className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg shadow-blue-200 transition-all"
+                                    >
+                                        {loading ? "loading..." : "Simpan Profil Hima"}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    )
                     }
                 </div>
 
@@ -381,68 +409,68 @@ export default function SettingsPage() {
                     </div>
                     <div className="p-8">
                         {loadingDataPengguna ? (
-                                <div className="flex my-2 justify-center items-center gap-2">
-                                    <div className="w-6 h-6 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-                                    <span className="text-gray-500">Memuat data...</span>
-                                </div>
-                            )  : (
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-                                    {/* Username Section */}
-                                    <form onSubmit={handleUserSubmit} className="space-y-6 border-b lg:border-b-0 lg:border-r border-gray-100 pb-8 lg:pb-0 lg:pr-12">
-                                        {/* Photo removed from here */}
-                                        <div>
-                                            <label className="block text-sm font-bold text-gray-700 mb-2">Username</label>
+                            <div className="flex my-2 justify-center items-center gap-2">
+                                <div className="w-6 h-6 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                                <span className="text-gray-500">Memuat data...</span>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                                {/* Username Section */}
+                                <form onSubmit={handleUserSubmit} className="space-y-6 border-b lg:border-b-0 lg:border-r border-gray-100 pb-8 lg:pb-0 lg:pr-12">
+                                    {/* Photo removed from here */}
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">Username</label>
+                                        <input
+                                            type="text"
+                                            required
+                                            className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-black"
+                                            value={userUsername}
+                                            onChange={(e) => setUserUsername(e.target.value)}
+                                        />
+                                    </div>
+                                    <button
+                                        type="submit"
+                                        disabled={loadingUsername}
+                                        className="w-full py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold transition-all"
+                                    >
+                                        {loadingUsername ? "loading..." : "Update Username"}
+                                    </button>
+                                </form>
+
+                                {/* Password Section */}
+                                <form onSubmit={handlePasswordSubmit} className="space-y-4">
+                                    <div>
+                                        <div className="grid gap-3">
                                             <input
-                                                type="text"
+                                                type="password"
                                                 required
+                                                placeholder="Password Baru"
                                                 className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-black"
-                                                value={userUsername}
-                                                onChange={(e) => setUserUsername(e.target.value)}
+                                                value={userPasswordData.newPassword}
+                                                onChange={(e) => setUserPasswordData({ ...userPasswordData, newPassword: e.target.value })}
+                                            />
+                                            <input
+                                                type="password"
+                                                required
+                                                placeholder="Konfirmasi Password Baru"
+                                                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-black"
+                                                value={userPasswordData.confirmPassword}
+                                                onChange={(e) => setUserPasswordData({ ...userPasswordData, confirmPassword: e.target.value })}
                                             />
                                         </div>
-                                        <button
-                                            type="submit"
-                                            disabled={loadingUsername}
-                                            className="w-full py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold transition-all"
-                                        >
-                                            {loadingUsername ? "loading..." : "Update Username"}
-                                        </button>
-                                    </form>
+                                    </div>
+                                    <button
+                                        type="submit"
+                                        disabled={loadingPassword}
+                                        className="w-full py-3 bg-gray-900 hover:bg-black text-white rounded-xl font-bold shadow-lg shadow-gray-200 transition-all mt-4"
+                                    >
+                                        {loadingPassword ? "loading..." : "Update Password"}
+                                    </button>
+                                </form>
+                            </div>
+                        )
+                        }
 
-                                    {/* Password Section */}
-                                    <form onSubmit={handlePasswordSubmit} className="space-y-4">
-                                        <div>
-                                            <div className="grid gap-3">
-                                                <input
-                                                    type="password"
-                                                    required
-                                                    placeholder="Password Baru"
-                                                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-black"
-                                                    value={userPasswordData.newPassword}
-                                                    onChange={(e) => setUserPasswordData({ ...userPasswordData, newPassword: e.target.value })}
-                                                />
-                                                <input
-                                                    type="password"
-                                                    required
-                                                    placeholder="Konfirmasi Password Baru"
-                                                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-black"
-                                                    value={userPasswordData.confirmPassword}
-                                                    onChange={(e) => setUserPasswordData({ ...userPasswordData, confirmPassword: e.target.value })}
-                                                />
-                                            </div>
-                                        </div>
-                                        <button
-                                            type="submit"
-                                            disabled={loadingPassword}
-                                            className="w-full py-3 bg-gray-900 hover:bg-black text-white rounded-xl font-bold shadow-lg shadow-gray-200 transition-all mt-4"
-                                        >
-                                            {loadingPassword ? "loading..." : "Update Password"}
-                                        </button>
-                                    </form>
-                                </div>
-                            )
-                    }
-                        
                     </div>
                 </div>
             </div>

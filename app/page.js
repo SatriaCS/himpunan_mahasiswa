@@ -87,12 +87,20 @@ export default function Home() {
       setLoadingNews(true);
 
       const res = await fetch("/api/user/news");
+
+      if (!res.ok) {
+            // Ambil pesan error dari backend
+            const errorData = await res.json(); 
+            // Lempar error agar masuk ke blok catch
+            throw new Error(errorData.message || `Gangguan. Silakan coba beberapa saat lagi.`);
+      }
+
       const result = await res.json();
 
       setNewsData(result.data || []);
       setUsernameNews(result.username)
     } catch (err) {
-      console.log(err);
+      alert(err.message)
     } finally {
       setLoadingNews(false);
     }
@@ -103,12 +111,20 @@ export default function Home() {
       // setLoadingNews(true);
 
       const res = await fetch("/api/user/headline");
+
+      if (!res.ok) {
+            // Ambil pesan error dari backend
+            const errorData = await res.json(); 
+            // Lempar error agar masuk ke blok catch
+            throw new Error(errorData.message || `Gangguan. Silakan coba beberapa saat lagi.`);
+      }
+
       const result = await res.json();
       
       setHeadline(result.data || []);
       setUsername(result.username)
     } catch (err) {
-      console.log(err);
+      alert(err.message)
     } finally {
       // setLoadingNews(false);
     }
@@ -119,12 +135,20 @@ export default function Home() {
       setLoadingEvents(true);
 
       const res = await fetch("/api/user/event");
+
+      if (!res.ok) {
+            // Ambil pesan error dari backend
+            const errorData = await res.json(); 
+            // Lempar error agar masuk ke blok catch
+            throw new Error(errorData.message || `Gangguan. Silakan coba beberapa saat lagi.`);
+      }
+
       const result = await res.json();
 
       setUpcomingEvents(result.data || []);
       setUsernameEvent(result.username)
     } catch (err) {
-      console.log(err);
+      alert(err.message)
     } finally {
       setLoadingEvents(false);
     }
@@ -215,8 +239,8 @@ export default function Home() {
               >
                 {headline.map((item) => {
                   const img = item.type === "event"
-                    ?item.flayer
-                    : `/uploads/news/${item.username ?? username}/${item.thumbnail}`;
+                    ? item.flayer
+                    : item.thumbnail
                   const hasImage = !!(item.flayer || item.thumbnail);
                   const isLongDescription = (item.deskripsi || "").length > 180;
 
@@ -362,19 +386,12 @@ export default function Home() {
                     className="group flex flex-col rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 overflow-hidden"
                   >
                     <div className="aspect-[16/9] w-full overflow-hidden relative bg-gray-100 flex items-center justify-center">
-                      {item.username ?
-                        <img
-                          src={`/uploads/news/${item.username}/${item.thumbnail}`}
-                          alt={item.judul}
-                          className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-500"
-                        /> : 
-                        <img
-                          src={`/uploads/news/${usernameNews}/${item.thumbnail}`}
-                          alt={item.judul}
-                          className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-500"
-                        />}
-                      
-                    </div>
+                                            <img
+                                                src={item.thumbnail}
+                                                alt={item.judul}
+                                                className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-500"
+                                            />
+                    </div>                    
                     <div className="flex-1 bg-white p-8 flex flex-col justify-between">
                       <div className="flex-1">
                         <Link href={`/berita/${item.slug}`} className="block mt-3">

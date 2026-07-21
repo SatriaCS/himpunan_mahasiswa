@@ -4,6 +4,7 @@ import db from "@/lib/db";
 import fs from "fs";
 import path from "path";
 import { verifyAdmin } from "@/lib/auth";
+import { put, del } from "@vercel/blob";
 
 async function generateUniqueSlug(judul) {
 
@@ -41,7 +42,7 @@ export async function POST(req) {
         return auth;
     }
     const conn = await db.getConnection();
-    let filePath = null;
+    let uploadedBlobUrl = null;
     try {
 
         /* ======================
@@ -63,10 +64,10 @@ export async function POST(req) {
         const id_akun = decoded.id;
         
         /* ======================
-           AMBIL USER + HIMA
+           AMBIL HIMA
         ====================== */
         const [[user]] = await conn.query(
-            "SELECT username FROM akun WHERE id_akun=?",
+            "SELECT folder_name FROM hima WHERE id_akun=?",
             [id_akun]
         );
 
@@ -135,27 +136,22 @@ export async function POST(req) {
         }
 
         /* ======================
-           BUAT FOLDER UPLOAD
+           UPLOAD THUMBNAIL
         ====================== */
-        const uploadDir = path.join(
-            process.cwd(),
-            "public/uploads/news",
-            user.username
-        );
+        let fileName = null;
 
-        if (!fs.existsSync(uploadDir)) {
-            fs.mkdirSync(uploadDir, { recursive: true });
+        if (file && file.size > 0) {
+            const blob = await put(
+                `news/${user.folder_name}/${Date.now()}-${file.name}`,
+                file,
+                {
+                    access: "public",
+                }
+            );
+
+            uploadedBlobUrl = blob.url;
+            fileName = blob.url;
         }
-
-        /* ======================
-           SIMPAN FILE
-        ====================== */
-        const bytes = await file.arrayBuffer();
-        const buffer = Buffer.from(bytes);
-
-        const fileName = `${Date.now()}-${file.name}`;
-        filePath = path.join(uploadDir, fileName);
-        fs.writeFileSync(filePath, buffer);
 
         await conn.beginTransaction();
         
@@ -183,10 +179,32 @@ export async function POST(req) {
         });
 
     } catch (error) {
+        console.error("[ERROR] POST /api/admin/news:", error);
         await conn.rollback();
-        // 🔥 HAPUS FILE JIKA SUDAH TERSIMPAN
-        if (filePath && fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
+        // 🔥 HAPUS BLOB JIKA SUDAH TERSIMPAN
+        if (uploadedBlobUrl) {
+            try {
+                await del(uploadedBlobUrl);
+            } catch (deleteError) {
+                console.error("Gagal menghapus thumbnail baru dari blob:", deleteError);
+            }
+        }
+        
+        //  Cek apakah error terkait jaringan/koneksi database
+        const isConnectionError = 
+            error.code === 'ETIMEDOUT' || 
+            error.code === 'PROTOCOL_SEQUENCE_TIMEOUT' ||
+            error.code === 'ECONNRESET' ||  
+            error.code === 'ECONNREFUSED' || 
+            error.name === 'TimeoutError';
+        
+        if (isConnectionError) {
+            return NextResponse.json(
+                { 
+                    message: "Gangguan koneksi Gagal Menambah data berita. Silakan coba beberapa saat lagi.",
+                },
+                { status: 503 } // 503 Service Unavailable atau 504 Gateway Timeout lebih cocok
+            );
         }
         return NextResponse.json(
             { message: "Internal server error" },
@@ -299,7 +317,23 @@ export async function GET(req) {
         });
 
     } catch (error) {
+        console.error("[ERROR] GET /api/admin/news:", error);
+        //  Cek apakah error terkait jaringan/koneksi database
+        const isConnectionError = 
+            error.code === 'ETIMEDOUT' || 
+            error.code === 'PROTOCOL_SEQUENCE_TIMEOUT' ||
+            error.code === 'ECONNRESET' ||  
+            error.code === 'ECONNREFUSED' || 
+            error.name === 'TimeoutError';
         
+        if (isConnectionError) {
+            return NextResponse.json(
+                { 
+                    message: "Gangguan koneksi Gagal Memuat data berita. Silakan coba beberapa saat lagi.",
+                },
+                { status: 503 } // 503 Service Unavailable atau 504 Gateway Timeout lebih cocok
+            );
+        }
         return NextResponse.json(
             { message: "Terjadi kesalahan server" },
             { status: 500 }
@@ -410,15 +444,12 @@ export async function DELETE(req) {
         /* ======================
            HAPUS FILE THUMBNAIL
         ====================== */
-        const filePath = path.join(
-            process.cwd(),
-            "public/uploads/news",
-            user.username,
-            news.thumbnail
-        );
-
-        if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
+        if (news.thumbnail) {
+                try {
+                    await del(news.thumbnail);
+                } catch (deleteError) {
+                    console.error("Gagal menghapus thumbnail dari blob:", deleteError);
+                }
         }
 
         return NextResponse.json({
@@ -427,6 +458,23 @@ export async function DELETE(req) {
 
     } catch (error) {
         await conn.rollback(); 
+        console.error("[ERROR] DELETE /api/admin/news:", error);
+        //  Cek apakah error terkait jaringan/koneksi database
+        const isConnectionError = 
+            error.code === 'ETIMEDOUT' || 
+            error.code === 'PROTOCOL_SEQUENCE_TIMEOUT' ||
+            error.code === 'ECONNRESET' ||  
+            error.code === 'ECONNREFUSED' || 
+            error.name === 'TimeoutError';
+        
+        if (isConnectionError) {
+            return NextResponse.json(
+                { 
+                    message: "Gangguan koneksi Gagal Menghapus data berita. Silakan coba beberapa saat lagi.",
+                },
+                { status: 503 } // 503 Service Unavailable atau 504 Gateway Timeout lebih cocok
+            );
+        }
         return NextResponse.json(
             { message: "Internal server error" },
             { status: 500 }
@@ -444,7 +492,7 @@ export async function PUT(req) {
         return auth;
     }
     const conn = await db.getConnection();
-    let filePath = null;
+    let uploadedBlobUrl = null;
     try {
 
         /* ======================
@@ -467,10 +515,10 @@ export async function PUT(req) {
         const id_akun = decoded.id;
         
         /* ======================
-           AMBIL USER + HIMA
+           AMBIL HIMA
         ====================== */
         const [[user]] = await conn.query(
-            "SELECT username FROM akun WHERE id_akun=?",
+            "SELECT folder_name FROM hima WHERE id_akun=?",
             [id_akun]
         );
 
@@ -547,13 +595,6 @@ export async function PUT(req) {
         const oldThumbnail = oldNews.thumbnail;
         let fileName = oldThumbnail;
         
-        /* ===== folder ===== */
-        const uploadDir = path.join(
-            process.cwd(),
-            "public/uploads/news",
-            user.username
-        );
-
         if (file && file.size > 0) {
 
             const MAX_SIZE = 5 * 1024 * 1024;
@@ -579,17 +620,16 @@ export async function PUT(req) {
                 );
             }
 
-            if (!fs.existsSync(uploadDir)) {
-                fs.mkdirSync(uploadDir, { recursive: true });
-            }
+            const blob = await put(
+                `news/${user.folder_name}/${Date.now()}-${file.name}`,
+                file,
+                {
+                    access: "public",
+                }
+            );
 
-            /* ===== simpan file baru ===== */
-            const bytes = await file.arrayBuffer();
-            const buffer = Buffer.from(bytes);
-
-            fileName = `${Date.now()}-${file.name}`;
-            filePath = path.join(uploadDir, fileName);
-            fs.writeFileSync(filePath, buffer);
+            uploadedBlobUrl = blob.url;
+            fileName = blob.url;
             
         }
         await conn.beginTransaction();
@@ -618,15 +658,15 @@ export async function PUT(req) {
         await conn.commit();
         /* ===== hapus file lama ===== */
         if (
-                file &&
-                file.size > 0 &&
-                oldThumbnail
-            ) {
-                const oldPath = path.join(uploadDir, oldThumbnail);
-                
-            if (fs.existsSync(oldPath)) {
-                fs.unlinkSync(oldPath);
-            }
+            file &&
+            file.size > 0 &&
+            oldThumbnail
+        ) {
+                try {
+                    await del(oldThumbnail);
+                } catch (deleteError) {
+                    console.error("Gagal menghapus thumbnail lama dari blob:", deleteError);
+                }
         }
 
         return NextResponse.json({
@@ -634,10 +674,32 @@ export async function PUT(req) {
         });
 
     } catch (error) {
+        console.error("[ERROR] PUT /api/admin/news:", error);
         await conn.rollback();
-        // 🔥 HAPUS FILE JIKA SUDAH TERSIMPAN
-        if (filePath && fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
+        // 🔥 HAPUS BLOB JIKA SUDAH TERSIMPAN
+        if (uploadedBlobUrl) {
+            try {
+                await del(uploadedBlobUrl);
+            } catch (deleteError) {
+                console.error("Gagal menghapus thumbnail baru dari blob:", deleteError);
+            }
+        }
+        
+        //  Cek apakah error terkait jaringan/koneksi database
+        const isConnectionError = 
+            error.code === 'ETIMEDOUT' || 
+            error.code === 'PROTOCOL_SEQUENCE_TIMEOUT' ||
+            error.code === 'ECONNRESET' ||  
+            error.code === 'ECONNREFUSED' || 
+            error.name === 'TimeoutError';
+        
+        if (isConnectionError) {
+            return NextResponse.json(
+                { 
+                    message: "Gangguan koneksi Gagal Mengedit data berita. Silakan coba beberapa saat lagi.",
+                },
+                { status: 503 } // 503 Service Unavailable atau 504 Gateway Timeout lebih cocok
+            );
         }
         return NextResponse.json(
             { message: "Internal server error" },

@@ -4,6 +4,8 @@ import bcrypt from "bcryptjs";
 import fs from "fs";
 import path from "path";
 import { verifySuperAdmin } from "@/lib/auth";
+import crypto from "crypto";
+import { list, del } from "@vercel/blob";
 
 async function generateUniqueSlug(judul) {
 
@@ -31,6 +33,28 @@ async function generateUniqueSlug(judul) {
     }
 
     return slug;
+}
+
+async function generateFolderName(conn) {
+    let folderName;
+    let exists = true;
+
+    while (exists) {
+        folderName = crypto
+            .randomBytes(4)
+            .toString("base64")
+            .replace(/[^a-zA-Z0-9]/g, "")
+            .substring(0, 5);
+
+        const [[result]] = await conn.query(
+            "SELECT COUNT(*) AS total FROM hima WHERE folder_name = ?",
+            [folderName]
+        );
+
+        exists = result.total > 0;
+    }
+
+    return folderName;
 }
 
 export async function POST(req) {
@@ -81,6 +105,9 @@ export async function POST(req) {
         ====================== */
         await conn.beginTransaction();
 
+        // generate folder_name
+        const folderName = await generateFolderName(conn);
+
         /* ======================
            INSERT AKUN
         ====================== */
@@ -101,9 +128,9 @@ export async function POST(req) {
            INSERT HIMA
         ====================== */
         const [result] =  await conn.query(
-            `INSERT INTO hima (nama,slug,id_akun)
-             VALUES (?,?,?)`,
-            [nama, slug, idAkun]
+            `INSERT INTO hima (nama,slug,id_akun,folder_name)
+             VALUES (?,?,?,?)`,
+            [nama, slug, idAkun, folderName]
         );
 
         if (result.affectedRows === 0 ) {
@@ -122,7 +149,23 @@ export async function POST(req) {
     } catch (error) {
         
         await conn.rollback();
-        
+        console.error("[ERROR] POST /api/super-admin/akun-admin:", error);
+        //  Cek apakah error terkait jaringan/koneksi database
+        const isConnectionError = 
+            error.code === 'ETIMEDOUT' || 
+            error.code === 'PROTOCOL_SEQUENCE_TIMEOUT' ||
+            error.code === 'ECONNRESET' ||  
+            error.code === 'ECONNREFUSED' || 
+            error.name === 'TimeoutError';
+
+        if (isConnectionError) {
+            return NextResponse.json(
+                { 
+                    message: "Gangguan koneksi Gagal menambah data akun. Silakan coba beberapa saat lagi.",
+                },
+                { status: 503 } // 503 Service Unavailable atau 504 Gateway Timeout lebih cocok
+            );
+        }
         return NextResponse.json({
             message: "internal server error",
         }, { status: 500 });
@@ -176,6 +219,24 @@ export async function GET(req) {
         });
 
     } catch (error) {        
+        await conn.rollback();
+        console.error("[ERROR] GET /api/super-admin/akun-admin:", error);
+        //  Cek apakah error terkait jaringan/koneksi database
+        const isConnectionError = 
+            error.code === 'ETIMEDOUT' || 
+            error.code === 'PROTOCOL_SEQUENCE_TIMEOUT' ||
+            error.code === 'ECONNRESET' ||  
+            error.code === 'ECONNREFUSED' || 
+            error.name === 'TimeoutError';
+
+        if (isConnectionError) {
+            return NextResponse.json(
+                { 
+                    message: "Gangguan koneksi Gagal memuat data akun. Silakan coba beberapa saat lagi.",
+                },
+                { status: 503 } // 503 Service Unavailable atau 504 Gateway Timeout lebih cocok
+            );
+        }s
         return NextResponse.json({
             message: "Internal Server Error"
         }, { status: 500 });
@@ -185,14 +246,12 @@ export async function GET(req) {
 export async function DELETE(req) {
     const auth = verifySuperAdmin(req);
 
-    // jika auth adalah response → langsung return
     if (auth instanceof Response) {
         return auth;
     }
     const conn = await db.getConnection();
 
     try {
-
         const { id_akun } = await req.json(); 
         
         if (!id_akun) {
@@ -201,11 +260,12 @@ export async function DELETE(req) {
                 { status: 404 }
             );
         }
-         /* ======================
+
+        /* ======================
         AMBIL USER
         ====================== */
         const [[user]] = await db.query(
-            "SELECT username FROM akun WHERE id_akun=?",
+            "SELECT folder_name FROM hima WHERE id_akun=?",
             [id_akun]
         );
 
@@ -215,7 +275,7 @@ export async function DELETE(req) {
             }, { status: 404 });
         }
 
-        const username = user.username;
+        const folder_name = user.folder_name;
 
         await conn.beginTransaction();
 
@@ -227,46 +287,66 @@ export async function DELETE(req) {
             [id_akun]
         );
         if (result.affectedRows === 0 ) {
-                throw new Error();
+                throw new Error("Gagal menghapus dari database");
         }
 
         await conn.commit();
+
         /* ======================
-        FUNCTION DELETE FOLDER
+        FUNCTION DELETE FOLDER VERCEL BLOB
         ====================== */
-        const deleteFolder = (baseFolder) => {
+        const deleteBlobFolder = async (prefix) => {
+            try {
+                // Cari semua file yang memiliki awalan path (prefix) ini
+                const { blobs } = await list({ prefix: prefix });
+                
+                // Ekstrak URL-nya saja
+                const urlsToDelete = blobs.map((blob) => blob.url);
 
-            const folderPath = path.join(
-                process.cwd(),
-                baseFolder,
-                username
-            );
-
-            if (fs.existsSync(folderPath)) {
-                fs.rmSync(folderPath, {
-                    recursive: true, // hapus isi folder
-                    force: true      // tidak error jika file terkunci
-                });
+                // Hapus secara massal jika ada isinya
+                if (urlsToDelete.length > 0) {
+                    await del(urlsToDelete);
+                }
+            } catch (error) {
+                // Log error saja, jangan throw agar tidak membatalkan proses lain
+                console.error(`🔥 [ERROR] DELETE /api/super-admin/akun-admin:Gagal menghapus blob prefix ${prefix}:`, error);
             }
         };
 
         /* ======================
-        DELETE SEMUA FOLDER
+        DELETE SEMUA FOLDER (Berjalan paralel agar lebih cepat)
         ====================== */
-        deleteFolder("public/uploads/hima");
-        deleteFolder("public/uploads/dokumentasi");
-        deleteFolder("public/uploads/member");
-        deleteFolder("public/uploads/news");
-        deleteFolder("public/uploads/event");
+        await Promise.all([
+            deleteBlobFolder(`hima/${folder_name}/`),
+            deleteBlobFolder(`dokumentasi/${folder_name}/`),
+            deleteBlobFolder(`member/${folder_name}/`),
+            deleteBlobFolder(`news/${folder_name}/`),
+            deleteBlobFolder(`event/${folder_name}/`)
+        ]);
 
         return NextResponse.json({
             message: "Akun HIMA berhasil dihapus"
         });
 
     } catch (error) {
-
         await conn.rollback();
+        console.error("🔥 [ERROR] DELETE /api/super-admin/akun-admin:", error);
+        
+        const isConnectionError = 
+            error.code === 'ETIMEDOUT' || 
+            error.code === 'PROTOCOL_SEQUENCE_TIMEOUT' ||
+            error.code === 'ECONNRESET' ||  
+            error.code === 'ECONNREFUSED' || 
+            error.name === 'TimeoutError';
 
+        if (isConnectionError) {
+            return NextResponse.json(
+                { 
+                    message: "Gangguan koneksi Gagal menghapus data akun. Silakan coba beberapa saat lagi.",
+                },
+                { status: 503 } 
+            );
+        }
         return NextResponse.json({
             message: "Internal Server Error"
         }, { status: 500 });
@@ -327,8 +407,6 @@ export async function PUT(req){
                 message: "data tidak ditemukan"
             }, { status: 404 });
         }
-        
-        const oldUsername = user.username;
 
         const [[oldHima]] = await conn.query(
             "SELECT * FROM hima WHERE id_akun=? ",
@@ -376,37 +454,6 @@ export async function PUT(req){
 
         await conn.commit();
 
-        /* ======================
-           FUNCTION RENAME FOLDER
-        ====================== */
-        const renameFolder = (baseFolder) => {
-
-            const oldPath = path.join(
-                process.cwd(),
-                baseFolder,
-                oldUsername
-            );
-
-            const newPath = path.join(
-                process.cwd(),
-                baseFolder,
-                username
-            );
-
-            if (fs.existsSync(oldPath)) {
-                fs.renameSync(oldPath, newPath);
-            }
-        };
-
-        /* ======================
-           RENAME SEMUA FOLDER
-        ====================== */
-        renameFolder("public/uploads/hima");
-        renameFolder("public/uploads/dokumentasi");
-        renameFolder("public/uploads/member");
-        renameFolder("public/uploads/news");
-        renameFolder("public/uploads/event");
-
         return NextResponse.json({
             message:"Data berhasil diperbarui"
         });
@@ -414,7 +461,23 @@ export async function PUT(req){
     }catch(error){
 
         await conn.rollback();
-        
+        console.error("[ERROR] PUT /api/super-admin/akun-admin:", error);
+        //  Cek apakah error terkait jaringan/koneksi database
+        const isConnectionError = 
+            error.code === 'ETIMEDOUT' || 
+            error.code === 'PROTOCOL_SEQUENCE_TIMEOUT' ||
+            error.code === 'ECONNRESET' ||  
+            error.code === 'ECONNREFUSED' || 
+            error.name === 'TimeoutError';
+
+        if (isConnectionError) {
+            return NextResponse.json(
+                { 
+                    message: "Gangguan koneksi Gagal mengedit data akun. Silakan coba beberapa saat lagi.",
+                },
+                { status: 503 } // 503 Service Unavailable atau 504 Gateway Timeout lebih cocok
+            );
+        }
         return NextResponse.json({
             message:"Internal Server Error"
         },{status:500});
