@@ -123,11 +123,11 @@ export default function DetailBerita({ params }) {
                                         month: "long",
                                         year: "numeric"
                                     })}`
-                                    : new Date(newsItem.created_at).toLocaleDateString("id-ID", {
+                                    : `Created : ${new Date(newsItem.created_at).toLocaleDateString("id-ID", {
                                         day: "numeric",
                                         month: "long",
                                         year: "numeric"
-                                    })
+                                    })}`
                             }
                         </span>
                     </div>

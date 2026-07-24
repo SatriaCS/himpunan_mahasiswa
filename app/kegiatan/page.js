@@ -115,7 +115,7 @@ export default function KegiatanPage() {
                                             </div>
                                         }
 
-                                        <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm text-blue-600 px-3 py-1.5 rounded-xl text-center shadow-sm border border-blue-100/50">
+                                        {/* <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm text-blue-600 px-3 py-1.5 rounded-xl text-center shadow-sm border border-blue-100/50">
                                             <span className="block text-xl font-bold leading-none">
                                                 {new Date(item.tanggal).toLocaleDateString("id-ID", { day: "numeric" })}
                                             </span>
@@ -126,7 +126,7 @@ export default function KegiatanPage() {
                                                     year: "numeric"
                                                 })}
                                             </span>
-                                        </div>
+                                        </div> */}
                                     </div>
                                     <div className="flex-1 p-8 flex flex-col">
                                         {item.kategori &&

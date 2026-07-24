@@ -24,7 +24,19 @@ export async function GET(req) {
                 k.link_pendaftaran as link
             FROM kegiatan k
             LEFT JOIN hima h ON k.id_hima = h.id_hima
-            ORDER BY k.tanggal ASC
+            ORDER BY
+            CASE
+                WHEN DATE(k.tanggal) >= CURDATE() THEN 0
+                ELSE 1
+            END,
+            CASE
+                WHEN DATE(k.tanggal) >= CURDATE()
+                THEN DATEDIFF(DATE(k.tanggal), CURDATE())
+            END ASC,
+            CASE
+                WHEN DATE(k.tanggal) < CURDATE()
+                THEN DATEDIFF(CURDATE(), DATE(k.tanggal))
+            END ASC
             LIMIT ? OFFSET ?
         `, [limit, offset]);
         /* ======================
@@ -34,7 +46,19 @@ export async function GET(req) {
             SELECT COUNT(*) AS total
             FROM kegiatan k
             LEFT JOIN hima h ON k.id_hima = h.id_hima
-            ORDER BY k.tanggal ASC
+            ORDER BY
+            CASE
+                WHEN DATE(k.tanggal) >= CURDATE() THEN 0
+                ELSE 1
+            END,
+            CASE
+                WHEN DATE(k.tanggal) >= CURDATE()
+                THEN DATEDIFF(DATE(k.tanggal), CURDATE())
+            END ASC,
+            CASE
+                WHEN DATE(k.tanggal) < CURDATE()
+                THEN DATEDIFF(CURDATE(), DATE(k.tanggal))
+            END ASC
         `);
 
         return NextResponse.json({

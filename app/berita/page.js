@@ -160,11 +160,11 @@ export default function BeritaPage() {
                                                                     month: "long",
                                                                     year: "numeric"
                                                                 })}`
-                                                                : new Date(item.created_at).toLocaleDateString("id-ID", {
+                                                                : `created : ${new Date(item.created_at).toLocaleDateString("id-ID", {
                                                                     day: "numeric",
                                                                     month: "long",
                                                                     year: "numeric"
-                                                                })
+                                                                })}`
                                                         }
                                                     </div>
                                                 </div>
