@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function LoginPage() {
     const router = useRouter();
@@ -87,6 +88,15 @@ export default function LoginPage() {
                                 "Masuk Dashboard"
                             )}
                         </button>
+
+                        <div className="flex justify-center">
+                            <Link
+                                href="/"
+                                className="text-sm text-blue-600 hover:text-blue-800 hover:underline transition-colors"
+                            >
+                                ← Kembali ke Halaman Utama
+                            </Link>
+                        </div>
                     </form>
                 </div>
 
