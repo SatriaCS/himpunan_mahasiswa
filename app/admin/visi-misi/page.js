@@ -109,7 +109,7 @@ export default function VisiMisiPage() {
                                         <textarea
                                             value={visi  || ""}
                                             onChange={(e) => {setVisi(e.target.value)}}
-                                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 transition-all h-32 text-black"
+                                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 transition-all h-64 text-black"
                                             placeholder="Masukkan visi organisasi..."
                                         ></textarea>
                                     </div>
