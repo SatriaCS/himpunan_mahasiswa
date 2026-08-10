@@ -436,7 +436,7 @@ export default function EventsPage() {
                             <label className="block text-sm font-bold text-gray-700 mb-1">Deskripsi</label>
                             <textarea
                                 required
-                                rows="3"
+                                rows="6"
                                 className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-black resize-none"
                                 placeholder="Jelaskan detail kegiatan..."
                                 value={formData.deskripsi}

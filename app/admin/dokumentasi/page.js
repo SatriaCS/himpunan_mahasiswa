@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useState, useEffect } from "react";
 import Modal from "../../components/Modal";
 import Pagination from "../components/Pagination";
@@ -219,29 +219,25 @@ export default function DokumentasiPage() {
                         </div>
 
                         {photos.map((photo) => (
-                            <div key={photo.id} className="group relative aspect-square bg-gray-100 rounded-xl overflow-hidden border border-gray-200">
+                            <div
+                                key={photo.id}
+                                onClick={() => handleView(photo)}
+                                className="group relative aspect-square bg-gray-100 rounded-xl overflow-hidden border border-gray-200 cursor-pointer"
+                                role="button"
+                                tabIndex={0}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter" || e.key === " ") {
+                                        e.preventDefault();
+                                        handleView(photo);
+                                    }
+                                }}
+                                aria-label={`Perbesar foto ${photo.judul}`}
+                            >
                                 <img
                                     src={photo.foto}
                                     alt={photo.judul}
                                     className="w-full h-full object-cover"
                                 />
-
-                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                    <button
-                                        onClick={() => handleView(photo)}
-                                        className="p-2 bg-white/20 text-white rounded-lg hover:bg-white/40 backdrop-blur-sm"
-                                        title="Lihat"
-                                    >
-                                        🔍
-                                    </button>
-                                    <button
-                                        onClick={() => handleDelete(photo)}
-                                        className="p-2 bg-red-500/80 text-white rounded-lg hover:bg-red-600 backdrop-blur-sm"
-                                        title="Hapus"
-                                    >
-                                        🗑️
-                                    </button>
-                                </div>
                                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3 text-white">
                                     <p className="text-xs font-medium truncate">{photo.judul}</p>
                                 </div>
@@ -331,19 +327,27 @@ export default function DokumentasiPage() {
                             />
                         </div>
                         <h4 className="text-xl font-bold text-gray-900 mb-6">{selectedPhoto.judul}</h4>
-                        <button
-                            onClick={() => setIsModalOpen(false)}
-                            className="w-full py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold transition-all"
-                        >
-                            Tutup
-                        </button>
+                        <div className="flex gap-4">
+                            <button
+                                onClick={() => setIsModalOpen(false)}
+                                className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold transition-all"
+                            >
+                                Tutup
+                            </button>
+                            <button
+                                onClick={() => setModalMode("delete")}
+                                className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold shadow-lg shadow-red-200 transition-all"
+                            >
+                                Hapus
+                            </button>
+                        </div>
                     </div>
                 )}
 
                 {modalMode === "delete" && (
                     <div className="text-center py-4">
                         <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                            <span className="text-4xl">🗑️</span>
+                            <span className="text-4xl">⚠️</span>
                         </div>
                         <h4 className="text-xl font-bold text-gray-900 mb-2">Hapus Foto Ini?</h4>
                         <p className="text-gray-500 mb-8">
@@ -375,7 +379,7 @@ export default function DokumentasiPage() {
             >
                 <div className="text-center py-4">
                     <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <span className="text-4xl">✅</span>
+                        <span className="text-4xl text-green-600" aria-hidden="true">&#10003;</span>
                     </div>
 
                     <h4 className="text-xl font-bold text-gray-900 mb-2">
@@ -403,7 +407,7 @@ export default function DokumentasiPage() {
             >
                 <div className="text-center py-4">
                     <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <span className="text-4xl">❌</span>
+                        <span className="text-4xl text-red-600" aria-hidden="true">&times;</span>
                     </div>
 
                     <h4 className="text-xl font-bold text-gray-900 mb-2">
